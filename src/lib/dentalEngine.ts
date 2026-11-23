@@ -40,13 +40,47 @@ function parsePhone(text: string): string | null {
   return m ? m[0].replace(/\s+/g, ' ').trim() : null
 }
 
+/**
+ * Fillers / acknowledgements that are never a name (English + common Urdu/Hindi
+ * backchannels heard on UK calls). "hmm" used to be stored as the patient's name.
+ */
+const FILLER_WORDS = new Set([
+  'hmm', 'hm', 'mm', 'mmm', 'umm', 'um', 'uh', 'uhh', 'uhm', 'erm', 'er', 'err', 'ah', 'ahh', 'eh', 'oh', 'ooh',
+  'haan', 'han', 'haa', 'ha', 'ji', 'jee', 'acha', 'achha', 'theek', 'hai', 'ok', 'okay', 'k', 'kk', 'yes', 'yeah',
+  'yep', 'yup', 'no', 'nope', 'what', 'sorry', 'pardon', 'huh', 'hello', 'hi', 'hey', 'wait', 'well', 'so', 'like',
+  'right', 'sure', 'alright', 'fine', 'thanks', 'thank', 'you', 'one', 'sec', 'second', 'moment', 'hold', 'on',
+])
+const FILLER_SHAPE = /^(h+m+|m{2,}|u+m+|u+h+m*|e+r+m*|a+h+|o+h+)$/
+
+export function isFillerUtterance(text: string): boolean {
+  const words = text.toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).filter(Boolean)
+  if (words.length === 0) return true
+  return words.every((w) => FILLER_WORDS.has(w) || FILLER_SHAPE.test(w))
+}
+
+/** Words that follow "I'm ..." but are not names ("I'm not sure", "I'm really nervous"). */
+const NOT_NAME = new Set([
+  'not', 'just', 'really', 'very', 'so', 'calling', 'looking', 'trying', 'wondering', 'interested', 'having',
+  'getting', 'going', 'in', 'at', 'a', 'an', 'the', 'new', 'existing', 'here', 'still', 'nervous', 'worried',
+  'scared', 'anxious', 'afraid', 'good', 'great', 'after', 'about', 'with', 'from', 'free', 'available', 'busy',
+  'road', 'street', 'practice', 'dental', 'care', 'next', 'morning', 'afternoon', 'evening', 'today', 'tomorrow',
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'patient',
+])
+
+function plausibleName(candidate: string): boolean {
+  const words = candidate.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return false
+  if (isFillerUtterance(candidate)) return false
+  return !words.some((w) => NOT_NAME.has(w) || FILLER_WORDS.has(w) || FILLER_SHAPE.test(w))
+}
+
 function parseName(text: string): string | null {
   const labeled = text.match(
     /(?:(?:my\s+)?name\s+is|i'?m|i\s+am|this\s+is|name[:\s]+)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/i,
   )
-  if (labeled?.[1]) return labeled[1].replace(/\b\w/g, (c) => c.toUpperCase())
+  if (labeled?.[1] && plausibleName(labeled[1])) return labeled[1].replace(/\b\w/g, (c) => c.toUpperCase())
   const uk = text.match(/\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b/)
-  return uk?.[1] ?? null
+  return uk?.[1] && plausibleName(uk[1]) ? uk[1] : null
 }
 
 const DENTAL_COLLECT: ConversationStep[] = [
@@ -609,8 +643,9 @@ export function processDentalMessage(opts: {
     const extracted = extractDentalFields(text, biz)
     // Field-specific capture
     if (step === 'collect_name' && !extracted.guestName) {
-      const raw = text.trim().replace(/^(my name is|i'?m|i am)\s+/i, '')
-      if (raw.length >= 2) extracted.guestName = raw.replace(/\b\w/g, (c) => c.toUpperCase())
+      const raw = text.trim().replace(/^(my name is|i'?m|i am)\s+/i, '').replace(/[.!?]+$/, '')
+      // Fillers ("hmm", "umm", "haan", "ok") are not names - stay on collect_name and re-ask
+      if (raw.length >= 2 && plausibleName(raw) && !/\d/.test(raw)) extracted.guestName = raw.replace(/\b\w/g, (c) => c.toUpperCase())
     }
     if (step === 'collect_phone' && !extracted.phone) {
       const digits = text.replace(/[^\d+]/g, '')
