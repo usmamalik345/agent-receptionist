@@ -1,0 +1,104 @@
+/**
+ * Accuracy evals for the dental receptionist + release gate.
+ *   npm run eval        run cases, print results, write metrics/eval.md (exit 0)
+ *   npm run eval:gate   same, exit 1 if pass rate < EVAL_THRESHOLD (default 0.9)
+ * Offline through the real pipeline (router enforced + latency ladder + rule engine):
+ * no LLM keys, no network, no WhatsApp. Traces go to logs/traces.eval.jsonl.
+ */
+import 'dotenv/config'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { AgentRuntime, type TurnResult } from '../server/agentTurn.ts'
+import { jsonlSink } from '../server/tracing.ts'
+import { mdTable, readJsonl } from './trace-utils.mts'
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const argv = process.argv.slice(2)
+const gate = argv.includes('--gate')
+const casesFile = argv.find((a) => !a.startsWith('--')) ?? path.join(ROOT, 'evals', 'dental.jsonl')
+const threshold = Number(process.env.EVAL_THRESHOLD || 0.9)
+
+interface Expect {
+  route?: string
+  match?: string[]
+  not_match?: string[]
+  outcome?: string[]
+  step?: string
+  handoff?: boolean
+  emergency?: boolean
+  ticket?: boolean
+  ticket_priority?: string
+}
+interface EvalCase {
+  id: string
+  business?: string
+  description: string
+  after_hours?: boolean
+  turns: Array<{ text: string; expect: Expect }>
+}
+
+function checkTurn(r: TurnResult, e: Expect): string[] {
+  const errs: string[] = []
+  if (e.route && r.route !== e.route) errs.push(`route ${r.route} != ${e.route}`)
+  for (const m of e.match ?? []) if (!new RegExp(m, 'i').test(r.text)) errs.push(`missing /${m}/`)
+  for (const m of e.not_match ?? []) if (new RegExp(m, 'i').test(r.text)) errs.push(`forbidden /${m}/`)
+  if (e.outcome && !e.outcome.includes(String(r.outcome))) errs.push(`outcome ${r.outcome} not in [${e.outcome}]`)
+  if (e.step && r.step !== e.step) errs.push(`step ${r.step} != ${e.step}`)
+  if (e.handoff !== undefined && r.handoff !== e.handoff) errs.push(`handoff ${r.handoff} != ${e.handoff}`)
+  if (e.emergency !== undefined && Boolean(r.booking.isEmergency) !== e.emergency) errs.push(`emergency ${r.booking.isEmergency} != ${e.emergency}`)
+  if (e.ticket && !r.reply?.createTicket) errs.push('no ticket')
+  const prio = r.reply?.createTicket?.priority
+  if (e.ticket_priority && prio !== e.ticket_priority) errs.push(`ticket priority ${prio} != ${e.ticket_priority}`)
+  return errs
+}
+
+const cases = readJsonl<EvalCase>(casesFile)
+if (cases.length === 0) {
+  console.error(`No eval cases in ${casesFile}`)
+  process.exit(1)
+}
+
+const agent = new AgentRuntime({
+  enforceRouter: true,
+  stdout: false,
+  traceSink: jsonlSink(path.join(ROOT, 'logs', 'traces.eval.jsonl')),
+  decisionSink: () => {},
+})
+
+const results: Array<{ id: string; ok: boolean; errors: string[]; description: string }> = []
+for (const c of cases) {
+  const { callId } = agent.start({ business: c.business ?? 'mm-dental', afterHours: c.after_hours, source: 'eval', callId: `eval-${c.id}-${Date.now()}` })
+  const errors: string[] = []
+  for (const [i, turn] of c.turns.entries()) {
+    try {
+      const r = await agent.turn(callId, turn.text)
+      for (const e of checkTurn(r, turn.expect)) errors.push(`turn ${i + 1}: ${e} :: "${r.text.slice(0, 90)}"`)
+    } catch (e) {
+      errors.push(`turn ${i + 1}: threw ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  agent.end(callId)
+  results.push({ id: c.id, ok: errors.length === 0, errors, description: c.description })
+}
+
+const passed = results.filter((r) => r.ok).length
+const rate = passed / results.length
+for (const r of results) {
+  console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.id}`)
+  for (const e of r.errors) console.log(`      ${e}`)
+}
+const summary = `${passed}/${results.length} = ${(rate * 100).toFixed(1)}% (threshold ${(threshold * 100).toFixed(0)}%)`
+console.log(`\nAccuracy: ${summary}`)
+
+const rows = results.map((r) => [r.id, r.ok ? 'PASS' : 'FAIL', r.description, r.errors.join('<br>').replace(/\|/g, '\\|')])
+const md = ['# Eval results (dental)', '', `Generated: ${new Date().toISOString()} - cases: ${path.relative(ROOT, casesFile)}`, '']
+md.push(`**Accuracy: ${summary}** -> ${rate >= threshold ? 'PASS' : 'FAIL'}`, '', mdTable(['Case', 'Result', 'What it checks', 'Errors'], rows), '')
+mkdirSync(path.join(ROOT, 'metrics'), { recursive: true })
+writeFileSync(path.join(ROOT, 'metrics', 'eval.md'), md.join('\n'), 'utf8')
+
+if (gate && rate < threshold) {
+  console.error(`EVAL_GATE_FAIL: ${summary}`)
+  process.exit(1)
+}
+console.log(gate ? 'EVAL_GATE_PASS' : 'EVAL_DONE')
