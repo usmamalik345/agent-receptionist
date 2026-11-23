@@ -1,0 +1,23 @@
+{
+  "_note": "Failure category prefix -> replay tests (names in tests/replay-taxonomy.test.ts) that must keep passing. tests/replay-taxonomy.test.ts fails if a prefix the categorizer can emit has no test here.",
+  "error": ["taxonomy: error -> llm error falls back, caller still answered"],
+  "timeout": ["taxonomy: timeout -> tool progress-then-stall times out and hands off"],
+  "tool_error": ["taxonomy: tool_error -> failed ticket tool never claims success"],
+  "tool_misuse": ["taxonomy: tool_misuse -> invalid ticket args rejected by schema"],
+  "fallback": ["taxonomy: fallback -> slow primary model uses small model inside budget", "taxonomy: token_cap -> small model then human"],
+  "handoff": ["taxonomy: handoff -> explicit ask and off-topic go to a human"],
+  "low_confidence": ["taxonomy: handoff -> explicit ask and off-topic go to a human"],
+  "failed_clarification": ["taxonomy: failed_clarification -> fillers re-ask, two failures hand off"],
+  "unknown_intent_fallback_reply": ["taxonomy: failed_clarification -> fillers re-ask, two failures hand off"],
+  "empty_answer": ["taxonomy: empty_answer -> every replay turn has a non-empty reply"],
+  "over_latency_budget": ["taxonomy: over_latency_budget -> first audio inside budget under slow model and tool"],
+  "filler_first": ["taxonomy: over_latency_budget -> first audio inside budget under slow model and tool"],
+  "ungrounded_answer": ["taxonomy: ungrounded_answer -> invented price or time is blocked"],
+  "pii_leak": ["taxonomy: pii_leak -> foreign phone number is blocked"],
+  "guard_blocked": ["taxonomy: ungrounded_answer -> invented price or time is blocked"],
+  "long_reply": ["taxonomy: long_reply -> model output capped, engine safety copy kept whole"],
+  "token_cap": ["taxonomy: token_cap -> small model then human"],
+  "wrong_route": ["taxonomy: wrong_route -> labelled replay turns route as expected"],
+  "missed_handoff": ["taxonomy: handoff -> explicit ask and off-topic go to a human"],
+  "expectation_failed": ["taxonomy: wrong_route -> labelled replay turns route as expected"]
+}

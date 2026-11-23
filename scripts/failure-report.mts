@@ -1,72 +1,83 @@
 /**
- * Failure categories derived ONLY from fields present in real traces -> metrics/failures.md
- *   npm run report:failures                      (logs/traces.jsonl)
+ * Failure taxonomy built automatically from traces (+ replay expectation failures) -> metrics/failures.md
+ *   npm run report:failures                         logs/traces.jsonl + latest replay outputs (if present)
  *   npm run report:failures -- logs/traces.eval.jsonl
- * A turn can land in several categories; zero-hit categories are not listed. No hard-coded counts.
+ *   npm run report:failures -- --require-coverage   exit 1 if an observed category has no replay test
+ * Categories come only from fields present in the traces (scripts/taxonomy.mts). Each category
+ * prefix maps to replay tests in evals/taxonomy.json. A turn can land in several categories.
  */
 import 'dotenv/config'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadLatencyConfig } from '../server/latency.ts'
 import { HUMAN_CONFIDENCE_THRESHOLD } from '../server/router.ts'
-import type { TurnTrace } from '../server/tracing.ts'
-import { argFiles, mdTable, readTurns } from './trace-utils.mts'
+import { categorize, categorizeExpectationError, prefixOf } from './taxonomy.mts'
+import { argFiles, mdTable, readJsonl, readTurns } from './trace-utils.mts'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
-const files = argFiles(process.argv.slice(2), [path.join(ROOT, 'logs', 'traces.jsonl')])
+const argv = process.argv.slice(2)
+const replayDirs = ['latest', 'faults'].map((d) => path.join(ROOT, 'metrics', 'replay', d))
+const defaults = [path.join(ROOT, 'logs', 'traces.jsonl'), ...replayDirs.map((d) => path.join(d, 'traces.jsonl'))].filter(existsSync)
+const files = argFiles(argv, defaults)
+const resultFiles = argv.some((a) => !a.startsWith('--')) ? [] : replayDirs.map((d) => path.join(d, 'results.jsonl')).filter(existsSync)
 const budget = loadLatencyConfig().budgetMs
-const isTimeout = (s?: string | null) => /timeout|timed out|abort/i.test(s ?? '')
-
-/** Taxonomy: trace fields -> category names. */
-function categorize(t: TurnTrace): string[] {
-  const cats: string[] = []
-  const bad = (t.spans ?? []).filter((s) => !s.ok)
-  for (const s of bad) cats.push(`${isTimeout(s.error) ? 'timeout' : 'error'}:${s.name}`)
-  if (t.error && bad.length === 0) cats.push(isTimeout(t.error) ? 'timeout:turn' : 'error:turn')
-  for (const tc of t.tool_calls ?? []) if (!tc.ok) cats.push(`tool_error:${tc.tool}`)
-  if (t.fallback) cats.push(`fallback:${t.fallback.reason}`)
-  if (t.route === 'human' || t.handoff) cats.push(`handoff:${t.router?.reason ?? t.outcome ?? 'unknown'}`)
-  if (t.router && t.router.confidence < HUMAN_CONFIDENCE_THRESHOLD) cats.push('low_confidence')
-  if (t.failed_clarification) cats.push('failed_clarification')
-  if (t.intent === 'unknown') cats.push('unknown_intent_fallback_reply')
-  if (t.reply_chars === 0) cats.push('empty_answer')
-  if (typeof t.ttfa_ms === 'number' && t.ttfa_ms > budget) cats.push('over_latency_budget')
-  return cats
-}
+const coverage = JSON.parse(readFileSync(path.join(ROOT, 'evals', 'taxonomy.json'), 'utf8')) as Record<string, string[] | string>
 
 const turns = readTurns(files)
-const byCat = new Map<string, TurnTrace[]>()
+const byCat = new Map<string, string[]>()
 let failedTurns = 0
 for (const t of turns) {
-  const cats = categorize(t)
+  const cats = categorize(t, budget)
   if (cats.length) failedTurns++
-  for (const c of cats) byCat.set(c, [...(byCat.get(c) ?? []), t])
+  for (const c of cats) byCat.set(c, [...(byCat.get(c) ?? []), `${t.trace_id.slice(0, 8)}#${t.turn_id}`])
 }
-const pct = (n: number) => `${Math.round((n / turns.length) * 100)}%`
+// Replay expectation failures (wrong route, missed hand-off, ...)
+let expectationFailures = 0
+for (const f of resultFiles) {
+  for (const r of readJsonl<{ id: string; ok: boolean; errors: string[] }>(f)) {
+    for (const e of r.errors ?? []) {
+      expectationFailures++
+      const c = categorizeExpectationError(e)
+      byCat.set(c, [...(byCat.get(c) ?? []), `${path.basename(path.dirname(f))}/${r.id}`])
+    }
+  }
+}
+const pct = (n: number) => `${Math.round((n / Math.max(1, turns.length)) * 100)}%`
+const testsFor = (cat: string) => {
+  const t = coverage[prefixOf(cat)]
+  return Array.isArray(t) ? t : []
+}
 
 const lines: string[] = ['# Failure report', '', `Generated: ${new Date().toISOString()}`, '']
-lines.push(`Sources: ${files.map((f) => path.relative(ROOT, f)).join(', ')}`, '')
-if (turns.length === 0) {
-  lines.push('No turn traces found. Categories will appear once real or test calls have been traced.')
+lines.push(`Sources: ${[...files, ...resultFiles].map((f) => path.relative(ROOT, f)).join(', ') || 'none'}`, '')
+const uncovered = [...byCat.keys()].filter((c) => testsFor(c).length === 0)
+if (turns.length === 0 && expectationFailures === 0) {
+  lines.push('No turn traces found. Run `npm run replay` (synthetic) or trace real calls first.')
 } else {
-  lines.push(`Turns analysed: **${turns.length}** - turns with >=1 failure signal: **${failedTurns}** (${pct(failedTurns)})`, '')
+  lines.push(`Turns analysed: **${turns.length}** - turns with >=1 failure signal: **${failedTurns}** (${pct(failedTurns)}); replay expectation failures: **${expectationFailures}**`, '')
   const rows = [...byCat]
     .sort((a, b) => b[1].length - a[1].length)
-    .map(([cat, ts]) => [cat, ts.length, pct(ts.length), new Set(ts.map((t) => t.call_id)).size, ts.slice(0, 3).map((t) => `${t.trace_id.slice(0, 8)}#${t.turn_id}`).join(', ')])
-  lines.push(rows.length ? mdTable(['Category', 'turns', '% of turns', 'calls', 'example trace#turn'], rows) : 'No failure signals found.', '')
+    .map(([cat, ex]) => [cat, ex.length, pct(ex.length), ex.slice(0, 3).join(', '), testsFor(cat).map((t) => `\`${t}\``).join('<br>') || '**NONE**'])
+  lines.push(rows.length ? mdTable(['Category', 'count', '% of turns', 'examples', 'replay test(s) that must keep passing'], rows) : 'No failure signals found.', '')
+  lines.push(uncovered.length ? `**Uncovered categories:** ${uncovered.join(', ')}` : 'Every observed category has at least one replay test (tests/replay-taxonomy.test.ts).', '')
   lines.push(
-    '## How categories are derived',
+    '## How categories are derived (scripts/taxonomy.mts)',
     '',
     '- `error:<span>` / `timeout:<span>`: a span recorded `ok: false` (timeout if the error says so)',
-    '- `tool_error:<tool>`: a tool call recorded `ok: false`',
+    '- `tool_error:<tool>` / `tool_misuse:<tool>`: tool failed / tool args failed schema validation',
     '- `fallback:<reason>`: latency/token ladder fired (budget_exceeded, token_cap, llm_timeout, llm_error)',
     '- `handoff:<reason>`: routed to a human, with the router reason',
     `- \`low_confidence\`: router confidence < ${HUMAN_CONFIDENCE_THRESHOLD}`,
     '- `failed_clarification`: agent re-asked and captured nothing new',
     '- `unknown_intent_fallback_reply`: engine answered with its generic "what do you need?" line',
     '- `empty_answer`: reply had 0 characters',
-    `- \`over_latency_budget\`: measured TTFA > ${budget} ms`,
+    `- \`over_latency_budget\`: TTFA (or server first-audio-ready) > ${budget} ms; \`filler_first\`: filler went out first`,
+    '- `ungrounded_answer:<price|time>` / `pii_leak:<phone|email>` / `guard_blocked` / `long_reply:<path>`: guard findings',
+    '- `token_cap`: per-call token cap hit on this turn',
+    '- `wrong_route:<expected>` / `missed_handoff` / `expectation_failed`: replay expectation failures',
+    '',
+    'Note: synthetic replay runs (especially `--faults`) contain failures on purpose; read categories with their source.',
   )
 }
 
@@ -75,3 +86,7 @@ mkdirSync(path.dirname(out), { recursive: true })
 writeFileSync(out, lines.join('\n') + '\n', 'utf8')
 console.log(lines.join('\n'))
 console.log(`\nWrote ${path.relative(ROOT, out)}`)
+if (argv.includes('--require-coverage') && uncovered.length) {
+  console.error(`TAXONOMY_COVERAGE_FAIL: ${uncovered.join(', ')}`)
+  process.exit(1)
+}
