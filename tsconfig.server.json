@@ -37,6 +37,8 @@
     "scripts/latency-report.mts",
     "scripts/failure-report.mts",
     "scripts/eval-gate.mts",
+    "scripts/expect.mts",
+    "scripts/taxonomy.mts",
     "scripts/replay-harness.mts",
     "scripts/gen-replay-fixtures.mts",
     "scripts/decision-diff.mts",

@@ -15,12 +15,18 @@
     "smoke:dental-ui": "tsx scripts/dental-ui-leak.mts",
     "ux": "tsx scripts/ux-regression.mts",
     "test:wa": "tsx scripts/test-whatsapp.mts",
-    "test": "tsx --test tests/router.test.ts tests/tracing.test.ts tests/latency-fallback.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "typecheck:server": "tsc -p tsconfig.server.json",
     "eval": "tsx scripts/eval-gate.mts",
     "eval:gate": "tsx scripts/eval-gate.mts --gate",
     "report:latency": "tsx scripts/latency-report.mts",
-    "report:failures": "tsx scripts/failure-report.mts"
+    "report:failures": "tsx scripts/failure-report.mts",
+    "replay": "tsx scripts/replay-harness.mts",
+    "replay:gate": "tsx scripts/replay-harness.mts --gate",
+    "replay:faults": "tsx scripts/replay-harness.mts --faults",
+    "replay:fixtures": "tsx scripts/gen-replay-fixtures.mts",
+    "replay:diff": "tsx scripts/decision-diff.mts",
+    "ci": "npm run build && npm run lint && npm run typecheck:server && npm test && npm run eval:gate && npm run replay:gate && npm run replay:diff -- --fail-on-change && npm run report:failures -- --require-coverage"
   },
   "dependencies": {
     "cors": "^2.8.5",
