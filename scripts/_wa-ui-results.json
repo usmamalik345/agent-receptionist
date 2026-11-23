@@ -1,0 +1,231 @@
+{
+  "startedAt": "2026-09-28T12:49:27.075Z",
+  "url": "http://[::1]:5173/whatsapp-demo",
+  "uiOpened": true,
+  "chatWorked": true,
+  "bookingPass": true,
+  "sessions": [
+    {
+      "id": "booking",
+      "name": "Full booking walk (7 turns + greeting)",
+      "turns": [
+        {
+          "session": "booking",
+          "guestText": "(CTA start)",
+          "botReply": "Welcome to Erth Abu Dhabi reservations. I’m an AI assistant covering after-hours and overflow. How may I help — a reservation, a change, dining, spa, or a colleague?",
+          "pass": true,
+          "notes": "Greeting received",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\01-booking-greeting.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\01-booking-greeting.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "Room pls",
+          "botReply": "What is your check-in date?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\02-booking-room-pls.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\02-booking-room-pls.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "15 oct to 18 oct",
+          "botReply": "Got it — I’ve captured the details you shared. How many adults and children?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\03-booking-15-oct-to-18-oct.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\03-booking-15-oct-to-18-oct.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "2 adults 1 kid",
+          "botReply": "2 adults and 1 child. May I have the guest name for the reservation?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\04-booking-2-adults-1-kid.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\04-booking-2-adults-1-kid.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "Maya Khan",
+          "botReply": "Thank you, Maya Khan. And a mobile number we can reach you on?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\05-booking-maya-khan.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\05-booking-maya-khan.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "+971501234567",
+          "botReply": "Any special requests, for example late check-in, connecting rooms, or accessibility needs? You may say “none”.",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\06-booking-971501234567.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\06-booking-971501234567.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "none",
+          "botReply": "May I confirm: Maya Khan, 2 adults and 1 child, 1 room, 15 Oct 2026 to 18 Oct 2026, phone +971501234567, special requests: none. Shall I notify the reservations desk to confirm availability and rate?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\07-booking-none.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\07-booking-none.png"
+        },
+        {
+          "session": "booking",
+          "guestText": "yes",
+          "botReply": "I’ve notified the reservations desk. They will call you back to confirm availability and rate. I can also send confirmation details on WhatsApp if you wish. Is there anything else I can help with today?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\08-booking-yes.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\08-booking-yes.png"
+        }
+      ],
+      "pass": true,
+      "notes": "Clicked CTA Start chat with reservations AI; Dashboard opened; notifyLen=310; ticketsLen=0; Last reply looks like confirm.",
+      "screenshots": [
+        "D:\\client\\scripts\\_wa-shots\\01-booking-greeting.png",
+        "D:\\client\\scripts\\_wa-shots\\02-booking-room-pls.png",
+        "D:\\client\\scripts\\_wa-shots\\03-booking-15-oct-to-18-oct.png",
+        "D:\\client\\scripts\\_wa-shots\\04-booking-2-adults-1-kid.png",
+        "D:\\client\\scripts\\_wa-shots\\05-booking-maya-khan.png",
+        "D:\\client\\scripts\\_wa-shots\\06-booking-971501234567.png",
+        "D:\\client\\scripts\\_wa-shots\\07-booking-none.png",
+        "D:\\client\\scripts\\_wa-shots\\08-booking-yes.png",
+        "D:\\client\\scripts\\_wa-shots\\09-dashboard-after-booking.png"
+      ]
+    },
+    {
+      "id": "parking",
+      "name": "Is parking free?",
+      "turns": [
+        {
+          "session": "parking",
+          "guestText": "(CTA start)",
+          "botReply": "Welcome to Erth Abu Dhabi reservations. I’m an AI assistant covering after-hours and overflow. How may I help — a reservation, a change, dining, spa, or a colleague?",
+          "pass": true,
+          "notes": "Clicked CTA Start chat with reservations AI",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\10-parking-greeting.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\10-parking-greeting.png"
+        },
+        {
+          "session": "parking",
+          "guestText": "Is parking free?",
+          "botReply": "Free private on-site parking (no reservation needed). Free valet commonly listed. EV charging and accessible parking available. May I help with anything else, a reservation, dining, or connecting you to a colleague?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\10-parking-reply.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\10-parking-reply.png"
+        }
+      ],
+      "pass": true,
+      "notes": "Short Q&A ok",
+      "screenshots": [
+        "D:\\client\\scripts\\_wa-shots\\10-parking-greeting.png",
+        "D:\\client\\scripts\\_wa-shots\\10-parking-reply.png"
+      ]
+    },
+    {
+      "id": "airport",
+      "name": "Airport pickup question",
+      "turns": [
+        {
+          "session": "airport",
+          "guestText": "(CTA start)",
+          "botReply": "Welcome to Erth Abu Dhabi reservations. I’m an AI assistant covering after-hours and overflow. How may I help — a reservation, a change, dining, spa, or a colleague?",
+          "pass": true,
+          "notes": "Clicked CTA Start chat with reservations AI",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\11-airport-greeting.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\11-airport-greeting.png"
+        },
+        {
+          "session": "airport",
+          "guestText": "Do you offer airport pickup?",
+          "botReply": "About 15 minutes’ drive from Zayed International Airport (property fact sheet). Airport pick-up / drop-off and shuttle listed (usually surcharge). Share flight number and ETA and I’ll notify the desk to arrange. May I help with anything else, a reservation, dining, or connecting you to a colleague?",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\11-airport-reply.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\11-airport-reply.png"
+        }
+      ],
+      "pass": true,
+      "notes": "Short Q&A ok",
+      "screenshots": [
+        "D:\\client\\scripts\\_wa-shots\\11-airport-greeting.png",
+        "D:\\client\\scripts\\_wa-shots\\11-airport-reply.png"
+      ]
+    },
+    {
+      "id": "arabic",
+      "name": "Arabic greeting",
+      "turns": [
+        {
+          "session": "arabic",
+          "guestText": "(CTA start)",
+          "botReply": "Welcome to Erth Abu Dhabi reservations. I’m an AI assistant covering after-hours and overflow. How may I help — a reservation, a change, dining, spa, or a colleague?",
+          "pass": true,
+          "notes": "Clicked CTA Start chat with reservations AI",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\12-arabic-greeting.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\12-arabic-greeting.png"
+        },
+        {
+          "session": "arabic",
+          "guestText": "السلام عليكم",
+          "botReply": "وعليكم السلام ومرحباً بكم في حجوزات إرث أبوظبي. كيف يمكنني مساعدتكم: حجز، تعديل، مطعم، سبا، أو التحدث مع زميل؟",
+          "pass": true,
+          "notes": "ok",
+          "screenshot": "D:\\client\\scripts\\_wa-shots\\12-arabic-reply.png",
+          "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\12-arabic-reply.png"
+        }
+      ],
+      "pass": true,
+      "notes": "Short Q&A ok",
+      "screenshots": [
+        "D:\\client\\scripts\\_wa-shots\\12-arabic-greeting.png",
+        "D:\\client\\scripts\\_wa-shots\\12-arabic-reply.png"
+      ]
+    }
+  ],
+  "uiBugs": [],
+  "absoluteShots": [
+    "D:\\client\\scripts\\_wa-shots\\01-booking-greeting.png",
+    "D:\\client\\scripts\\_wa-shots\\02-booking-room-pls.png",
+    "D:\\client\\scripts\\_wa-shots\\03-booking-15-oct-to-18-oct.png",
+    "D:\\client\\scripts\\_wa-shots\\04-booking-2-adults-1-kid.png",
+    "D:\\client\\scripts\\_wa-shots\\05-booking-maya-khan.png",
+    "D:\\client\\scripts\\_wa-shots\\06-booking-971501234567.png",
+    "D:\\client\\scripts\\_wa-shots\\07-booking-none.png",
+    "D:\\client\\scripts\\_wa-shots\\08-booking-yes.png",
+    "D:\\client\\scripts\\_wa-shots\\10-parking-greeting.png",
+    "D:\\client\\scripts\\_wa-shots\\10-parking-reply.png",
+    "D:\\client\\scripts\\_wa-shots\\11-airport-greeting.png",
+    "D:\\client\\scripts\\_wa-shots\\11-airport-reply.png",
+    "D:\\client\\scripts\\_wa-shots\\12-arabic-greeting.png",
+    "D:\\client\\scripts\\_wa-shots\\12-arabic-reply.png",
+    "D:\\client\\scripts\\_wa-shots\\09-dashboard-after-booking.png"
+  ],
+  "docsShots": [
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\01-booking-greeting.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\02-booking-room-pls.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\03-booking-15-oct-to-18-oct.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\04-booking-2-adults-1-kid.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\05-booking-maya-khan.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\06-booking-971501234567.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\07-booking-none.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\08-booking-yes.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\10-parking-greeting.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\10-parking-reply.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\11-airport-greeting.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\11-airport-reply.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\12-arabic-greeting.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\12-arabic-reply.png",
+    "C:\\Users\\USER\\Documents\\erth-wa-shots\\09-dashboard-after-booking.png"
+  ],
+  "dashboard": {
+    "screenshot": "D:\\client\\scripts\\_wa-shots\\09-dashboard-after-booking.png",
+    "docsCopy": "C:\\Users\\USER\\Documents\\erth-wa-shots\\09-dashboard-after-booking.png",
+    "notifyText": "Notify desk\nWhatsApp · Reservations desk\n+971 50 XXX XXXX (demo desk notify)\nReservation inquiry, Maya Khan\nNew after-hours reservation inquiry, Maya Khan, 2 adults 1 child, 1 room, 15 Oct 2026 to 18 Oct 2026, phone +971501234567, notes: none, call back to confirm availability/rate.\n5:49:40 PM · Desk notified",
+    "ticketsText": ""
+  }
+}

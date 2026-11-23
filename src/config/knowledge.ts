@@ -1,0 +1,583 @@
+/** Full Erth Abu Dhabi demo knowledge, guest-facing Q&A (DEMO · public sources). */
+
+import { DINING, EVENTS, RESORT, ROOMS, SERVICES, WELLNESS } from './resort'
+
+export type FaqKey = keyof typeof KNOWLEDGE
+
+export const KNOWLEDGE = {
+  check_in: {
+    keywords: /check[\s-]?in|check[\s-]?out|وصول|مغادرة|تسجيل/i,
+    en: `Check-in from ${RESORT.checkInTime} (typically until midnight), check-out by ${RESORT.checkOutTime}. Please bring photo ID and a credit card. Advise your arrival time in advance, late arrivals are welcome and we can arrange access.`,
+    ar: `تسجيل الوصول من الساعة ${RESORT.checkInTime} والمغادرة قبل ${RESORT.checkOutTime}. يُرجى إحضار هوية شخصية وبطاقة ائتمان، وإبلاغنا بوقت الوصول مسبقاً. نرحّب بالوصول المتأخر.`,
+  },
+  early_checkin: {
+    keywords: /early\s*check|وصول\s*مبكر/i,
+    en: `Early check-in is subject to availability. Share your preferred time and I’ll ask reservations (${RESORT.reservationsPhone}) to confirm. Luggage storage is available if your room isn’t ready.`,
+    ar: `الوصول المبكر حسب التوفّر. أخبرونا بالوقت المفضّل وسأطلب من الحجوزات التأكيد. يتوفّر تخزين للأمتعة إذا لم تكن الغرفة جاهزة.`,
+  },
+  late_checkout: {
+    keywords: /late\s*check[\s-]?out|مغادرة\s*متأخرة/i,
+    en: `Late check-out depends on occupancy and may carry a fee. I’ll note the request for reservations. Express check-out may also be available.`,
+    ar: `المغادرة المتأخرة تعتمد على الإشغال وقد تكون برسوم. سأسجّل الطلب لدى الحجوزات. قد تتوفّر أيضاً مغادرة سريعة.`,
+  },
+  location: {
+    keywords:
+      /where|location|address|how to (get|find)|map|directions|dubai\s*marina|in\s+dubai|dubai\??|أبوظبي|أين|موقع|عنوان|كيف أصل/i,
+    en: `Erth Abu Dhabi is at Khor Al Maqta, Al Khaleej Al Arabi Road, Abu Dhabi (P.O. Box 29810): not Dubai Marina. About 15 minutes from downtown Abu Dhabi and Zayed International Airport, near Sheikh Zayed Grand Mosque and Wahat Al Karama.`,
+    ar: 'إرث في أبوظبي (خور المقطع، طريق الخليج العربي) وليست في دبي مارينا. حوالي ١٥ دقيقة من وسط أبوظبي ومن مطار زايد، قرب جامع الشيخ زايد وواحة الكرامة.',
+  },
+  mosque: {
+    keywords: /sheikh zayed|grand mosque|wahat|karama|جامع|مسجد الشيخ|واحة الكرامة/i,
+    en: `Nearby: Sheikh Zayed Grand Mosque (~4 km) and Wahat Al Karama. Downtown about 15 minutes. Concierge can help with transport or tickets.`,
+    ar: `قريب من جامع الشيخ زايد (حوالي ٤ كم) وواحة الكرامة. وسط أبوظبي حوالي ١٥ دقيقة. الكونسيرج يساعد في التنقّل أو التذاكر.`,
+  },
+  airport: {
+    keywords: /airport|how far.*(airport|auh)|transfer|pickup|pick[\s-]?up|drop.?off|shuttle|zayed international|AUH|مطار|توصيل|استقبال/i,
+    en: `About 15 minutes’ drive from Zayed International Airport (property fact sheet). ${SERVICES.airportShuttle}`,
+    ar: `حوالي ١٥ دقيقة من مطار زايد الدولي. يتوفّر عادةً توصيل من وإلى المطار برسوم. أرسلوا رقم الرحلة وسأُشعر الاستقبال.`,
+  },
+  taxi: {
+    keywords: /taxi|careem|uber|cab|car hire|rental car|تاكسي|كريم|تأجير/i,
+    en: `Taxis and ride-hailing are easy. Car hire / tours can be arranged via concierge. Driver address: ${RESORT.address}.`,
+    ar: `التاكسي وتطبيقات النقل متوفّرة بسهولة. تأجير السيارات والجولات عبر الكونسيرج. العنوان للسائق: ${RESORT.address}.`,
+  },
+  dining: {
+    keywords: /dining|restaurant|food|eat|menu|halal|طعام|مطعم|فطور|عشاء|غداء|حلال|غاه|ghawah/i,
+    en: `${DINING.culture} Outlets: Al Rimal (${DINING.alRimal.hours}), Ergon (${DINING.ergon.hours}), Asrah (${DINING.asrah.hours}), Beetza (${DINING.beetza.hours}), plus Michelin Erth Restaurant at Al Hosn in the city. ${RESORT.roomService} Dining: ${RESORT.diningPhone} · ${RESORT.emailDining}.`,
+    ar: `مطاعم إماراتية وعالمية مع وجبات حلال وخدمة غرف على مدار الساعة. الرمال (${DINING.alRimal.hours})، إرغون، أسرح، بيتزا، ومطعم إرث الحصن (ميشلان) في المدينة. للمطاعم: ${RESORT.diningPhone}.`,
+  },
+  al_rimal: {
+    keywords: /al\s*rimal|الرمل|الرمال|buffet/i,
+    en: `Al Rimal (“${DINING.alRimal.meaning}”): ${DINING.alRimal.en} Hours: ${DINING.alRimal.hours}.`,
+    ar: `الرمال: ${DINING.alRimal.ar} الساعات: ${DINING.alRimal.hours}.`,
+  },
+  ergon: {
+    keywords: /ergon|greek|يونان/i,
+    en: `Ergon: ${DINING.ergon.en} Hours: ${DINING.ergon.hours}.`,
+    ar: `إرغون: ${DINING.ergon.ar} ${DINING.ergon.hours}.`,
+  },
+  beetza: {
+    keywords: /beetza|pizza|بيتزا|نابول/i,
+    en: `Beetza: ${DINING.beetza.en} Hours: ${DINING.beetza.hours}.`,
+    ar: `بيتزا: ${DINING.beetza.ar} ${DINING.beetza.hours}.`,
+  },
+  asrah: {
+    keywords: /asrah|pool\s*bar|أسرح/i,
+    en: `Asrah: ${DINING.asrah.en} Hours: ${DINING.asrah.hours}.`,
+    ar: `أسرح: ${DINING.asrah.ar} ${DINING.asrah.hours}.`,
+  },
+  room_service: {
+    keywords: /room\s*service|in.?room dining|خدمة الغرف/i,
+    en: RESORT.roomService + ' Ask the operator or in-room menu for the current menu and timing.',
+    ar: 'خدمة الغرف متاحة على مدار الساعة للنزلاء. القائمة عبر الهاتف الداخلي أو موظف الغرف.',
+  },
+  michelin: {
+    keywords: /michelin|al\s*hosn|hosn|نجمة|الحصن|fine\s*dining/i,
+    en: `Erth Restaurant at Al Hosn (city) has held a Michelin star for three consecutive years. Separate from the resort. ${DINING.erthAlHosn.hours}`,
+    ar: `مطعم إرث الحصن حاصل على نجمة ميشلان لثلاث سنوات متتالية، وموقعه في وسط المدينة منفصل عن المنتجع.`,
+  },
+  breakfast_included: {
+    keywords:
+      /breakfast included|half board|full board|complimentary breakfast|free breakfast|is breakfast|breakfast (free|included|complimentary|charge|extra|cost)|هل الفطور|شامل الفطور|فطور مجاني|الفطور مجاني/i,
+    en: `Breakfast is served at Al Rimal (${DINING.alRimal.hours.split('·')[0]?.trim()}). Many packages include complimentary breakfast: inclusion depends on the rate you book. Reservations will confirm whether breakfast is included in your quote; if not, Al Rimal breakfast can be added. Kids’ meals and dietary needs can be noted for the desk.`,
+    ar: `يُقدَّم الفطور في الرمال. كثير من الباقات تشمل فطوراً تكميلياً حسب السعر. الحجوزات تؤكد إن كان الفطور مشمولاً في عرضكم، ويمكن إضافته إن لم يكن. نُسجّل طلبات الأطفال أو الحساسية للمكتب.`,
+  },
+  pool_access: {
+    keywords:
+      /pool (charge|fee|extra|cost|free|included|complimentary)|swimming pool (free|charge|included)|is (the )?pool|مسبح (مجاني|برسوم|مشمول)|رسوم المسبح/i,
+    en: `Hotel guests normally enjoy complimentary access to the outdoor oasis pools and Blue Flag beach during operating hours. The indoor Olympic pool at Etizan may follow club/membership rules: please confirm with recreation or the desk. Towels are usually provided at the pools; privately booked water sports (jet ski, etc.) are charged separately.`,
+    ar: `نزلاء الفندق يستمتعون عادةً بدخول مجاني للمسابح الخارجية والشاطئ ضمن ساعات العمل. المسبح الأولمبي الداخلي في إتيزان قد يخضع لقواعد النادي: أكّدوا مع الترفيه أو الاستقبال. الرياضات المائية الخاصة برسوم منفصلة.`,
+  },
+  complimentary_extras: {
+    keywords:
+      /complimentary|what('?s| is) included|what('?s| is) free|extra charge|additional (fee|charge)|included in (the )?(stay|rate)|ما المشمول|مجاني|رسوم إضافية|ما يشمله/i,
+    en: `Typically for in-house guests: Wi‑Fi, outdoor pool & beach access, and parking are complimentary (confirm on arrival). Breakfast, half-board, spa treatments, airport transfers, water sports, and Etizan club extras depend on your rate or are charged separately: reservations will spell this out when they confirm availability and price. Tell me what you care about (breakfast, pool, kids club) and I’ll note it on the inquiry.`,
+    ar: `عادةً للنزلاء: الواي فاي ودخول المسابح الخارجية والشاطئ والموقف مجاني (يُؤكَّد عند الوصول). الفطور ونصف الإقامة والسبا والتوصيل والرياضات المائية قد تكون حسب الباقة أو برسوم. أخبروني بما يهمكم وسأُسجّله في الطلب.`,
+  },
+  spa: {
+    keywords: /spa|massage|wellness|valmont|treatment|سبا|مساج|فالمونت/i,
+    en: `${WELLNESS.spa.name}: ${WELLNESS.spa.en} Hours: ${WELLNESS.spa.hours}. Share preferred day/time and I’ll notify the desk.`,
+    ar: `${WELLNESS.spa.ar} الساعات: ${WELLNESS.spa.hours}. أخبرونا باليوم والوقت المفضّل وسأُشعر الاستقبال.`,
+  },
+  gym: {
+    keywords: /gym|fitness|etizan|workout|نادي|رياضة|جيم|إتيزان|اتيزان/i,
+    en: WELLNESS.fitness.en,
+    ar: WELLNESS.fitness.ar,
+  },
+  padel: {
+    keywords: /padel|tennis|football|fifa|squash|boxing|بادل|تنس|كرة|سكواش/i,
+    en: `Etizan sports: padel (3 indoor + 2 outdoor Panorama Pro, ladies court, racket rental), tennis, FIFA-certified pitch 105×68m, multi-size football courts with referee options, squash, boxing, spin & functional studios.`,
+    ar: `بادل (داخلي وخارجي ومحكمة سيدات)، تنس، ملعب فيفا، ملاعب كرة، سكواش وملاكمة واستوديوهات.`,
+  },
+  bowling: {
+    keywords: /bowl|بولين/i,
+    en: `Neon-lit bowling, 4 lanes, bookable for private groups via recreation / desk.`,
+    ar: `بولينغ بإضاءة نيون, 4 مسارات، يُحجز للمجموعات عبر الاستقبال.`,
+  },
+  water_sports: {
+    keywords: /kayak|paddle|jet\s*ski|water\s*sport|كاياك|جت|رياضات مائية/i,
+    en: WELLNESS.waterSports.en,
+    ar: WELLNESS.waterSports.ar,
+  },
+  ladies: {
+    keywords: /ladies|women|female only|سيدات|نساء/i,
+    en: `Ladies Wellness Hub (about 1,180 m² gym plus studios), private ladies padel court, and ladies-only pool access windows. Please confirm current timings with Etizan or front desk.`,
+    ar: `جناح عافية للسيدات، محكمة بادل للسيدات، وفترات مسبح للسيدات, يُؤكد التوقيت مع المنتجع.`,
+  },
+  pool: {
+    keywords: /pool|swim|infinity|swimming\s*pool|مسبح|سباحة/i,
+    en: `${WELLNESS.pools.en} Guest pool & beach access is normally complimentary during open hours; water sports and some Etizan facilities may be charged separately.`,
+    ar: `${WELLNESS.pools.ar} دخول نزلاء الفندق للمسابح والشاطئ مجاني عادةً ضمن ساعات العمل؛ الرياضات المائية وبعض مرافق إتيزان قد تكون برسوم.`,
+  },
+  beach: {
+    keywords: /beach|sea|blue\s*flag|شاطئ|بحر|علم أزرق/i,
+    en: RESORT.beach,
+    ar: 'شاطئ خاص بطول ٣٥٠ متراً بعلم أزرق، ومسبحان على شكل واحة. الرياضات المائية عند الطلب.',
+  },
+  parking: {
+    keywords: /\bpark(ing)?\b|valet|\bev\b|charging|سيارة|موقف|فاليه|شحن/i,
+    en: RESORT.parking,
+    ar: 'موقف مجاني في الموقع مع خدمة فاليه، وشحن للسيارات الكهربائية عادةً.',
+  },
+  car_wash: {
+    keywords: /car\s*wash|غسيل\s*سيار/i,
+    en: SERVICES.carWash,
+    ar: 'غسيل سيارات مميّز في الموقع: ٠٥٠ ٢٧٠ ٥٩٧٣ أو ٠٥٠ ٢٧٠ ٦٠٨٩.',
+  },
+  wifi: {
+    keywords: /wifi|wi[\s-]?fi|internet|شبكة|واي\s*فاي/i,
+    en: RESORT.wifi,
+    ar: 'واي فاي عالي السرعة مجاني في الغرف والمناطق العامة.',
+  },
+  kids: {
+    keywords: /kid|child|children|baby|crib|kids?\s*club|playground|أطفال|طفل|نادي الأطفال|ملعب/i,
+    en: `Family-friendly: ${SERVICES.kidsClub} Kids’ pools, playground, children’s meals, family suites (e.g. Al Muradi with bunks), interconnecting rooms on request. World Travel Awards: UAE Leading Family Hotel 2024.`,
+    ar: `نادي أطفال، مسابح أطفال، ملعب، وجبات أطفال، أجنحة عائلية وغرف متصلة, جائزة فندق عائلي رائد 2024.`,
+  },
+  family: {
+    keywords: /family.?friendly|عائل/i,
+    en: `Leading family hotel positioning, villas, family suites, kids club, beach, pools, and dining for all ages.`,
+    ar: `منتجع عائلي رائد, فيلات وأجنحة ونادي أطفال وشاطئ ومطاعم للجميع.`,
+  },
+  pets: {
+    keywords: /\b(pets?|pet\s+policy|dogs?|service\s+animal|bring\s+(a\s+)?(dog|cat|pet))\b|حيوان|كلب|قطة/i,
+    en: RESORT.pets,
+    ar: 'الحيوانات الأليفة غير مسموحة؛ حيوانات الخدمة تُؤكد مسبقاً.',
+  },
+  payment: {
+    keywords: /pay|card|visa|mastercard|cash|دفع|بطاقة|كاش/i,
+    en: `Major cards accepted. ${RESORT.deposit}`,
+    ar: `بطاقات رئيسية مقبولة. قد يُطلب تأمين مسترد عند الوصول.`,
+  },
+  deposit: {
+    keywords: /damage deposit|refundable deposit|تأمين|عربون/i,
+    en: RESORT.deposit,
+    ar: 'تأمين مسترد قد يُطلب عند الوصول (~2000 درهم في بعض القوائم, يُؤكد).',
+  },
+  cancellation: {
+    keywords: /cancel|refund|policy|إلغاء|استرجاع|سياسة/i,
+    en: `Cancellation depends on rate. Flexible rates often allow free cancel 24 to 48 hours before arrival. Please confirm with ${RESORT.emailDesk}.`,
+    ar: `الإلغاء حسب السعر, غالباً 24–48 ساعة للأسعار المرنة. أكدوا عبر ${RESORT.emailDesk}.`,
+  },
+  rates: {
+    keywords: /rate|price|cost|how much|aed|dollar|سعر|أسعار|كم\s*(سعر|تكلفة|يكلف)|تكلفة/i,
+    en: `I don’t quote final rates in this after-hours demo. Reservations confirms availability and rate on callback (${RESORT.reservationsPhone}). I can capture dates, category preference (deluxe / suite / villa), and guest count now.`,
+    ar: `لا أذكر سعراً نهائياً هنا. الأسعار تعتمد على التواريخ والإشغال، وتؤكدها الحجوزات عند الاتصال. يمكنني تسجيل التواريخ ونوع الغرفة الآن أو تحويلكم لزميل.`,
+  },
+  room_types: {
+    keywords:
+      /suite|villa|deluxe|room type|\bking\b|\btwin\b|ubayya|hadiqa|minhaf|muradi|rabdan|hidra|which rooms?|what rooms?|أنواع الغرف|جناح|فيلا|غرفة ديلوكس|ديلوكس|العبية/i,
+    en: `Main categories on erth.ae: deluxe rooms (Al Ubayya, Al Hadiqa), suites (Minhaf, Al Muradi Family, Erth, Rabdan, Al Hidra), and beach/pool villas (1–3 bedroom). Ask “which room types do you have?” for a numbered list you can pick from: availability is confirmed by reservations.`,
+    ar: `الفئات الرئيسية: غرف ديلوكس (العبية، الحديقة)، أجنحة (منهاف، المرادي العائلي، إرث، ربضان، الحدرة)، وفيلات شاطئ/مسبح. اسألوا «ما أنواع الغرف؟» لقائمة مرقّمة: التوفر تؤكده الحجوزات.`,
+  },
+  villas: {
+    keywords: /pool villa|beach villa|private pool|فيلا|مسبح خاص/i,
+    en: `Beach and pool villas on the Blue Flag shore, plunge pools, outdoor showers, cabanas, pantry, Al Rayeh + Mudeef. Two- and three-bedroom options. Leading Hotel Villas award (Abu Dhabi, 2024).`,
+    ar: `فيلات شاطئ ومسبح مع مسبح خاص وكابانا وخدمة المضيف, جوائز فيلات رائدة 2024.`,
+  },
+  amenities: {
+    keywords: /amenities|mini\s*bar|espresso|tv|safe|florist|مرافق الغرفة|ثلاجة|خزنة/i,
+    en: `Room amenities include: ${ROOMS.amenities.join(', ')}.`,
+    ar: 'مرافق الغرفة: ميني بار، إسبريسو، مكواة، سجادة صلاة، تلفزيون، بلوتوث، واي فاي، غسيل 24/7، خدمة غرف 24 ساعة، خزنة والمزيد.',
+  },
+  butler: {
+    keywords: /butler|packing|unpack|بوتلر|حقيبة/i,
+    en: SERVICES.butler + ' ' + SERVICES.shoeShine + ' ' + SERVICES.ironing,
+    ar: 'خدمة بوتلر للترتيب والملابس، تلميع أحذية مجاني، وكي احترافي.',
+  },
+  mudeef: {
+    keywords: /mudeef|host|مضيف|مُضيف/i,
+    en: `Suites and villas typically include dedicated Mudeef (personal host) service, Emirati hospitality, timely assistance.`,
+    ar: `الأجنحة والفيلات غالباً تشمل خدمة المضيف الشخصية.`,
+  },
+  al_rayeh: {
+    keywords: /al\s*rayeh|club lounge|lounge|الراية|راي/i,
+    en: `Premium categories include Al Rayeh Club Lounge access. It has been noted as temporarily closed at times, I’ll flag so reservations confirm current status.`,
+    ar: `صالة الراية للفئات العليا, قد تُغلق مؤقتاً؛ الحجوزات تؤكد الوضع.`,
+  },
+  prayer: {
+    keywords: /prayer|mosque|qibla|مصلى|صلاة|مسجد|قبلة/i,
+    en: `Prayer mats on request in rooms. Sheikh Zayed Grand Mosque is ~4 km away.`,
+    ar: `سجادة صلاة عند الطلب. جامع الشيخ زايد ~4 كم.`,
+  },
+  smoking: {
+    keywords: /smok|shisha|cigarette|تدخين|شيشة/i,
+    en: `Smoking is limited to designated outdoor zones. Most guest rooms are non-smoking, I’ll note any preference for the desk.`,
+    ar: `التدخين في مناطق خارجية محددة, معظم الغرف غير مخصصة للتدخين.`,
+  },
+  accessibility: {
+    keywords: /accessib|wheelchair|disability|ramp|roll.?in|إعاقة|كرسي متحرك/i,
+    en: `Some deluxe rooms feature roll-in showers; accessible parking on site. Share mobility needs so we allocate the right room.`,
+    ar: `غرف بدُش مهيّأ وموقف مخصص لذوي الهمم, أخبرونا باحتياجاتكم.`,
+  },
+  laundry: {
+    keywords: /laundry|dry clean|press|غسيل|كوي/i,
+    en: `24/7 laundry and dry cleaning; ironing service and complimentary shoe shine also available.`,
+    ar: 'غسيل وتنظيف جاف على مدار الساعة مع كي وتلميع أحذية.',
+  },
+  concierge: {
+    keywords: /concierge|tour|ticket|attraction|كونسيرج|جولة|تذاكر/i,
+    en: SERVICES.concierge,
+    ar: 'الكونسيرج يساعد في الجولات والتذاكر وحجوزات المطاعم.',
+  },
+  luggage: {
+    keywords: /luggage|baggage|store bags|أمتعة|شنط/i,
+    en: SERVICES.luggage,
+    ar: 'تخزين الأمتعة متاح للوصول المبكر أو المغادرة المتأخرة.',
+  },
+  business: {
+    keywords: /business|meeting room|corporate|seminar|أعمال|اجتماع|شركات/i,
+    en: `${SERVICES.business} ${EVENTS.en}`,
+    ar: `مركز أعمال و17 مساحة فعاليات للمؤتمرات والاجتماعات.`,
+  },
+  whatsapp_confirm: {
+    keywords: /whatsapp|wa\.me|send (me )?(confirm|detail)|واتساب|واتس/i,
+    en: `Yes, after reservations confirm, details can go on WhatsApp to your mobile. Email: ${RESORT.emailDesk}.`,
+    ar: `نعم, بعد التأكيد عبر واتساب أو البريد ${RESORT.emailDesk}.`,
+  },
+  dress_code: {
+    keywords: /dress|attire|smart casual|لباس|زي/i,
+    en: `Resort casual by day; smart-casual for fine dining (especially Erth Al Hosn). Beachwear at beach/pools only.`,
+    ar: 'ملابس منتجع نهاراً؛ أناقة غير رسمية للمطاعم الفاخرة؛ ملابس البحر للشواطئ فقط.',
+  },
+  languages: {
+    keywords: /language|arabic|english|speak|لغة|عربي|إنجليز/i,
+    en: `I assist in English and Arabic. Say “Arabic please” or “English please” anytime.`,
+    ar: 'أساعد بالعربية والإنجليزية. قولوا «English please» أو «بالعربي من فضلك».',
+  },
+  weather: {
+    keywords: /weather|temperature|hot|rain|طقس|حرارة|مطر/i,
+    en: `Abu Dhabi is warm to hot most of the year, light fabrics, sunscreen, and hydration. Beach and pools are highlights of the stay.`,
+    ar: 'أبوظبي دافئة معظم السنة, ملابس خفيفة وواقي شمس؛ الشاطئ والمسابح من أبرز التجارب.',
+  },
+  after_hours: {
+    keywords: /after[\s-]?hours|outside (hours|peak)|front desk (hours|open|closed)|are you open|outside peak|خارج الدوام|ساعات العمل/i,
+    en: `Outside peak staffing I still capture your full request and notify reservations: ${RESORT.reservationsPhone} · ${RESORT.emailDesk} · ${RESORT.phone}.`,
+    ar: `خارج الذروة أسجّل طلبكم وأُشعر الحجوزات للاتصال بكم.`,
+  },
+  events: {
+    keywords: /event|conference|meeting|seminar|exhibition|cinema|theatre|فعالية|مؤتمر|قاعة|سينما|مسرح/i,
+    en: EVENTS.en,
+    ar: EVENTS.ar,
+  },
+  weddings: {
+    keywords: /wedding|ballroom|nikah|زفاف|عرس|قاعة احتفال/i,
+    en: EVENTS.weddings,
+    ar: 'قاعة احتفالات وحدائق وتنسيق ضيافة, من أبرز وجهات الأعراس.',
+  },
+  awards: {
+    keywords: /award|michelin key|world travel|sustainable|جائزة|ميشلان/i,
+    en: `Recognition includes: ${RESORT.awards.join('; ')}.`,
+    ar: 'جوائز تشمل مفتاح ميشلان، فندق مستدام، أفضل جيم، فندق عائلي، فيلات رائدة، ونجمة ميشلان لمطعم الحصن.',
+  },
+  story: {
+    keywords: /history|heritage|story|armed forces|officers|club|1983|2021|إرث|تراث|تاريخ|ضباط/i,
+    en: RESORT.story,
+    ar: 'إرث يعني الإرث, من نادي الضباط (1997/2003) إلى إرث 2021: ضيافة إماراتية أصيلة.',
+  },
+  contact: {
+    keywords: /phone|email|contact|number|reservations? (desk|team)|هاتف|رقم|بريد|تواصل/i,
+    en: `Reservations: ${RESORT.reservationsPhone} · ${RESORT.emailDesk}. Main: ${RESORT.phone} · ${RESORT.emailGeneral}. Dining: ${RESORT.diningPhone}. ${RESORT.address}. ${RESORT.website}`,
+    ar: `الحجوزات ${RESORT.reservationsPhone} · العام ${RESORT.phone} · المطاعم ${RESORT.diningPhone}.`,
+  },
+  sustainability: {
+    keywords: /sustainab|green|eco|csr|استدام|بيئة/i,
+    en: `Recognised as Sustainable Hotel of the Year 2025 and for F&B sustainable practices 2024. Rooms use thoughtful local touches such as palm extracts from the property.`,
+    ar: `جائزة الفندق المستدام 2025 وممارسات ضيافة مستدامة, لمسات محلية في الغرف.`,
+  },
+  id_documents: {
+    keywords: /passport|emirates id|visa|documents|جواز|هوية|إقامة/i,
+    en: `At check-in please present valid photo ID (passport or Emirates ID as applicable) and a credit card for the hold. Guests are responsible for valid UAE entry permissions. I can note arrivals for the desk but cannot advise on immigration.`,
+    ar: `عند الوصول: هوية سارية وبطاقة ائتمان. ضوابط الدخول للدولة مسؤولية الضيف, يمكنني إبلاغ الاستقبال بوقت الوصول فقط.`,
+  },
+  extra_bed: {
+    keywords: /extra\s*bed|rollaway|سرير إضافي/i,
+    en: `Extra beds are available on request for select suites/villas (e.g. Erth Suite). Subject to availability and possible fee, I’ll note it for reservations.`,
+    ar: `سرير إضافي لبعض الأجنحة/الفيلات حسب التوفر وقد يكون برسوم.`,
+  },
+  connecting: {
+    keywords: /connect(ing|ing)|interconnect|غرف متصلة|متجاورة/i,
+    en: `Interconnecting rooms are available for select categories on request, ideal for families. I’ll note the preference.`,
+    ar: `غرف متصلة لبعض الفئات عند الطلب, مناسبة للعائلات.`,
+  },
+  group: {
+    keywords: /group booking|block|corporate rate|وفد|مجموعة|حجز جماعي/i,
+    en: `For groups or corporate blocks I can take outline dates and headcount, then escalate to reservations / events for a tailored proposal.`,
+    ar: `للحجز الجماعي أو الشركات أسجّل التواريخ والعدد وأحوّل للحجوزات/الفعاليات.`,
+  },
+
+  // --- Themes guests mention in public reviews (Booking / TripAdvisor-style), handled calmly ---
+  campus_size: {
+    keywords: /too big|spread out|hard to (find|navigate)|far from (lobby|restaurant|beach|pool|room)|golf cart|campus (too )?big|كبير جدا|متباعد|صعب (الوصول|التنقل)|عربة غولف/i,
+    en: `Erth is a large resort campus (gardens, sports, beach, events halls), some guests say it feels spread out at first. Tip: ask arrivals for a campus map or buggy/golf-cart assistance to your room, restaurant, or beach. Prefer a room closer to Al Rimal / pools? Tell me and I’ll note it for reservations.`,
+    ar: `الحرم واسع (حدائق ورياضة وشاطئ وقاعات) وقد يبدو كبيراً في البداية. اطلبوا خريطة أو عربة غولف عند الوصول. إن رغبتم بغرفة أقرب للمطاعم/المسابح أخبروني لأسجّل ذلك.`,
+  },
+  luggage_delay: {
+    keywords: /luggage|baggage|bags not|forgot.*bag|porter|أمتعة|شنط|حقائب لم/i,
+    en: `If luggage hasn’t arrived at your room, I’m sorry, that sometimes happens on a large campus. Please share your name/room and I’ll raise a priority porter ticket to the desk right away.`,
+    ar: `إن تأخرت الأمتعة أعتذر, الحرم كبير. أعطوني الاسم/رقم الغرفة وسأرفع طلباً عاجلاً للاستقبال.`,
+  },
+  minibar: {
+    keywords: /minibar|mini[\s-]?bar|empty fridge|not stocked|ثلاجة|ميني بار|فارغ/i,
+    en: `If the minibar or room amenities weren’t stocked, I’m sorry. I can request an immediate restock or a complimentary refresh. Please share your room number and preference.`,
+    ar: `إن كانت الثلاجة أو المرافق غير معبأة أعتذر. يمكنني طلب إعادة التعبئة فوراً, رقم الغرفة من فضلكم.`,
+  },
+  maintenance: {
+    keywords: /leak|drain|broken|not working|rust|toilet|shower|ac not|air.?con|تسريب|صرف|عطل|لا يعمل|تكييف|دش/i,
+    en: `I’m sorry about a maintenance issue (leak, drain, AC, fixtures). Engineering can attend quickly, or we can request a room change subject to availability. Please describe the issue and room number, I’ll notify the desk as priority.`,
+    ar: `أعتذر عن عطل الصيانة. يمكن إرسال الهندسة فوراً أو طلب تغيير غرفة حسب التوفر. صفوا المشكلة ورقم الغرفة.`,
+  },
+  noise: {
+    keywords: /noise|noisy|soundproof|construction|drill|loud|event hall|ضوضاء|إزعاج|بناء|صوت|قاعة/i,
+    en: `Some guests mention sound from events halls or nearby works on a large campus. We can request a quieter room category or location, note quiet hours, and escalate any disturbance now. Share dates or current room if you’re in-house.`,
+    ar: `بعض الضيوف يذكرون أصوات القاعات أو أعمال قريبة. يمكن طلب غرفة أهدأ وتسجيل الإزعاج فوراً, أخبروني بالتفاصيل.`,
+  },
+  pool_hours: {
+    keywords: /pool close|beach close|closes? (at|early)|6\s*pm|وقت المسبح|يغلق المسبح|الشاطئ يغلق/i,
+    en: `Outdoor pool and beach hours can feel early to some guests in summer. Please confirm today’s exact closing time with the desk or recreation, as timings change. The indoor Olympic pool at Etizan often has longer access windows and can be busy with members. For a quieter swim, earlier morning lanes help. I can also note a request for late access clarification.`,
+    ar: `ساعات المسبح/الشاطئ الخارجي قد تبدو مبكرة لبعض الضيوف, أكدوا وقت الإغلاق اليوم مع الاستقبال. المسبح الأولمبي الداخلي بإتيزان غالباً أطول وقد يكون مزدحماً.`,
+  },
+  pool_busy: {
+    keywords: /pool (busy|renovation|closed|refurb)|olympic pool crowded|مسبح مشغول|تجديد المسبح|مغلق/i,
+    en: `If an outdoor pool is under maintenance or the Olympic pool feels busy, alternatives usually include the second oasis pool, beach, or quieter morning lane times. I’ll check with the desk for today’s status and options, or log a concern if access disappointed you.`,
+    ar: `إن كان مسبح تحت صيانة أو الأولمبي مزدحماً، غالباً يتوفر مسبح واحة آخر أو الشاطئ أو فترات صباحية أهدأ, سأؤكد مع الاستقبال.`,
+  },
+  buffet_variety: {
+    keywords: /buffet repetitive|same food|kids menu|nuggets|picky eater|buffet boring|بوفيه ممل|نفس الطعام|قائمة أطفال/i,
+    en: `Al Rimal’s buffet is often praised, though longer stays can feel repetitive, and kids’ “favourite” items aren’t always listed. Options: Beetza for pizza, Ergon for Greek, Asrah poolside, 24h room service, or ask the chef/host for children’s preferences. I can reserve a table or note dietary needs for the desk.`,
+    ar: `بوفيه الرمال ممتاز غالباً لكن الإقامة الطويلة قد تكرّر الأطباق. بدائل: بيتزا، إرغون، أسرح، وخدمة الغرف, يمكنني تسجيل طلبات الأطفال أو الحمية.`,
+  },
+  poolside_menu: {
+    keywords: /pool (menu|food)|asrah menu|only pizza|healthy options|قائمة المسبح|صحي/i,
+    en: `Poolside (Asrah) is lighter fare, some guests want more salads/healthy options. I can note a preference for healthier pool snacks, suggest Ergon/Al Rimal, or place a room-service order request with the desk.`,
+    ar: `قائمة أسرح خفيفة, إن رغبتم بخيارات أصح يمكنني تسجيل الطلب أو اقتراح إرغون/الرمال أو خدمة الغرف.`,
+  },
+  value_price: {
+    keywords: /expensive|overpriced|value for money|worth it|غالي|السعر مرتفع|قيمة/i,
+    en: `Pricing reflects a large Emirati resort campus with beach, Etizan sports, dining, and villa options. I can’t discount rates here, but I can capture your dates and have reservations discuss packages, half-board, or villa vs deluxe value on callback.`,
+    ar: `التسعير يعكس منتجعاً كبيراً بشاطئ ورياضة ومطاعم. لا أقدّم خصماً هنا لكن يمكن للحجوزات مناقشة الباقات عند الاتصال.`,
+  },
+  expectations: {
+    keywords: /typical (5|five).?star|not like other hotels|officers club|campus feel|ليس فندق|نادي ضباط/i,
+    en: `Erth grew from the Officers Club legacy, a spacious campus with sports, gardens, and beach rather than a compact tower hotel. Guests who love space, Emirati hospitality, and facilities rate it highly; those expecting a small city hotel may find it different. Happy to help match room location (near lobby vs beach villa) to your style.`,
+    ar: `إرث من إرث نادي الضباط, حرم واسع برياضة وحدائق وشاطئ وليس برجاً صغيراً. نساعدكم باختيار موقع الغرفة الأنسب لأسلوب إقامتكم.`,
+  },
+  soundproofing: {
+    keywords: /soundproof|hear (neighbours|hallway|next room)|عزل صوت|أسمع الجيران/i,
+    en: `If soundproofing feels light, we can request a quieter floor/wing or a suite/villa category. Share your stay dates or room and I’ll notify the desk.`,
+    ar: `إن كان العزل الصوتي غير كافٍ يمكن طلب جناح/فيلا أو موقع أهدأ, سأُشعر الاستقبال.`,
+  },
+  room_size: {
+    keywords: /room (small|tiny|spacious)|bathroom small|غرفة صغيرة|حمام صغير/i,
+    en: `Deluxe rooms are about 36 m²; suites start around 64 m² and villas are larger with living space. If you need more space, I recommend Al Muradi family suite, Erth Suite, or a pool villa. I’ll note the preference.`,
+    ar: `الغرف الديلوكس حوالي 36م², للأوسع اختاروا جناح عائلي أو فيلا وسأسجّل التفضيل.`,
+  },
+  toddlers: {
+    keywords: /toddler|splash|baby pool|under 5|رضيع|طفل صغير|رذاذ/i,
+    en: `Families love Erth, though some note splash/toddler play is simpler than theme-park resorts. Kids Club (Al Baraha), kids’ pools, playground, and beach sand play help. Share ages and I’ll ask the desk about Kids Club hours and cot/highchair setup.`,
+    ar: `نادي أطفال ومسابح أطفال وملعب وشاطئ, أخبرونا بأعمار الأطفال لنؤكد الساعات والسرير/الكرسي العالي.`,
+  },
+  sauna_access: {
+    keywords: /sauna|jacuzzi|steam|ساونا|جاكوزي|بخار/i,
+    en: `Sauna / jacuzzi access can depend on facility and ladies’ timing windows. Confirm today’s schedule with Etizan or spa, or ask Valmont Spa for treatment + relaxation options. I’ll log a preference or complaint if access was unavailable.`,
+    ar: `الساونا/الجاكوزي حسب المرفق وفترات السيدات, أكدوا مع إتيزان أو سبا فالمونت.`,
+  },
+  praise_breakfast: {
+    keywords: /best breakfast|amazing breakfast|love the (food|breakfast)|أفضل فطور|الفطور رائع/i,
+    en: `Wonderful, many guests highlight Al Rimal’s breakfast buffet. I’ll pass your compliments to the dining team if you like, or help book dinner / a special occasion.`,
+    ar: `يسعدنا ذلك, كثير من الضيوف يثنون على فطور الرمال. يمكنني إيصال إطرائكم لفريق المطاعم.`,
+  },
+} as const
+
+export const DEMO_CHIPS = {
+  en: [
+    { label: '2 couples', text: 'We are 2 couples: need 2 couple rooms, from 10 October for 2 nights. Name Sara Khan, phone +971 50 111 2233' },
+    { label: 'Which room types?', text: 'Which type of rooms do you have?' },
+    { label: 'Pick room 4', text: '4' },
+    { label: 'AC broken Rm 412', text: 'The AC is not working in room 412, please send engineering' },
+    { label: 'Add breakfast (2)', text: '2' },
+    { label: 'Couple + family', text: '1 couple and 1 family with 2 children: 2 rooms please, check-in tomorrow for 3 nights' },
+    { label: 'Couple + kids rooms', text: 'I need two separate rooms: one for the couple and one for the children. 2 adults and 2 kids, from 8 October for 2 days' },
+    { label: 'Book a room (happy path)', text: "I'd like a room for 2 adults and 1 child, check-in 2026-10-10, check-out 2026-10-13, late check-in after 10pm. Name Ahmed Al Mansoori, phone +971 50 555 5555" },
+    { label: '2 days from today', text: 'I need a room for two days from today, 2 adults' },
+    { label: '1 adult 2 kids', text: 'Booking for 1 adult and 2 children, one room, from 10 Oct for 2 nights' },
+    { label: 'Couple + grandparent', text: '2 adults and 1 grandparent, 2 rooms if possible, check-in tomorrow for 3 nights' },
+    { label: 'Breakfast included?', text: 'Is breakfast complimentary / included in the rate?' },
+    { label: 'Pool free?', text: 'Is the swimming pool free for hotel guests?' },
+    { label: 'What’s included?', text: 'What is complimentary: breakfast, pool, parking?' },
+    { label: 'Tomorrow 5pm', text: 'I need a room from tomorrow 5pm for 3 nights, 2 adults' },
+    { label: 'In 2 days', text: 'Booking after 2 days until next week, 2 adults 1 child' },
+    { label: 'Weird date format', text: 'Check-in 10-26-13 check-out 13-2026-10, name Sara Ali, phone +971501112233' },
+    { label: 'Check-in / out?', text: 'What time is check-in and check-out?' },
+    { label: 'Airport transfer', text: 'How far is the airport and do you offer shuttle pickup?' },
+    { label: 'Al Rimal hours', text: 'What are Al Rimal restaurant hours?' },
+    { label: 'Room service?', text: 'Do you have 24-hour room service?' },
+    { label: 'Valmont Spa', text: 'Tell me about Valmont Spa hours and treatments' },
+    { label: 'Kids Club', text: 'Is there a kids club and playground?' },
+    { label: 'Beach & water sports', text: 'Do you have a private beach and water sports?' },
+    { label: 'Etizan / padel', text: 'What sports does Etizan offer, padel and football?' },
+    { label: 'Pool villa', text: 'Do you have pool villas with Mudeef service?' },
+    { label: 'Wedding venue', text: 'Can Erth host a wedding?' },
+    { label: 'Butler / laundry', text: 'Do you offer butler and laundry services?' },
+    { label: 'Parking & car wash', text: 'Is parking free? Can I get a car wash?' },
+    { label: 'Michelin?', text: 'Is there a Michelin restaurant?' },
+    { label: 'Campus too big?', text: 'Is the resort hard to navigate? Can I get a golf cart?' },
+    { label: 'Luggage delayed', text: 'They forgot to bring my luggage to the room' },
+    { label: 'Empty minibar', text: 'My minibar was empty, can you restock?' },
+    { label: 'Pool closes early?', text: 'What time does the outdoor pool and beach close?' },
+    { label: 'Quiet room', text: 'I need a quiet room away from event halls' },
+    { label: 'Complaint / maintenance', text: 'There is a leak in the bathroom shower drain' },
+    { label: 'Change existing booking', text: 'I need to change my booking. Name Sara Khan, phone +971 50 111 2222, confirmation ERTH-88421, move check-in to 2026-11-05' },
+    { label: 'Talk to human', text: 'Agent please' },
+    { label: 'Arabic please', text: 'Arabic please' },
+  ],
+  ar: [
+    {
+      label: 'حجز غرفة',
+      text: 'أريد غرفة لشخصين بالغين وطفل، الوصول 2026-10-10 والمغادرة 2026-10-13، وصول متأخر بعد العاشرة. اسمي أحمد المنصوري، الهاتف +971 50 555 5555',
+    },
+    { label: 'غرف منفصلة', text: 'أحتاج غرفتين منفصلتين: واحدة للزوجين وواحدة للأطفال. بالغين وطفلين من ٨ أكتوبر لمدة يومين' },
+    { label: 'زوجان اثنان', text: 'نحن زوجان اثنان، نحتاج غرفتين من ١٠ أكتوبر لمدة ليلتين. الاسم سارة خان، الهاتف +971 50 111 2233' },
+    { label: 'أنواع الغرف؟', text: 'ما أنواع الغرف لديكم؟' },
+    { label: 'مكيف معطل ٤١٢', text: 'المكيف لا يعمل في الغرفة ٤١٢، أرسلوا الهندسة من فضلكم' },
+    { label: 'يومان من اليوم', text: 'أريد غرفة ليومين من اليوم، شخصان' },
+    { label: 'الفطور مجاني؟', text: 'هل الفطور مشمول أو مجاني؟' },
+    { label: 'المسبح مجاني؟', text: 'هل المسبح مجاني لنزلاء الفندق؟' },
+    { label: 'وقت الوصول؟', text: 'ما وقت تسجيل الوصول والمغادرة؟' },
+    { label: 'المطار؟', text: 'كم يبعد المطار وهل يوجد توصيل؟' },
+    { label: 'الرمال؟', text: 'ما ساعات مطعم الرمال؟' },
+    { label: 'خدمة الغرف؟', text: 'هل توجد خدمة غرف على مدار الساعة؟' },
+    { label: 'السبا', text: 'أخبرني عن سبا فالمونت' },
+    { label: 'نادي أطفال', text: 'هل يوجد نادي أطفال وملعب؟' },
+    { label: 'الشاطئ', text: 'هل لديكم شاطئ خاص ورياضات مائية؟' },
+    { label: 'إتيزان', text: 'ما الرياضات في إتيزان مثل البادل؟' },
+    { label: 'فيلا مسبح', text: 'هل توجد فيلات بمسبح وخدمة مضيف؟' },
+    { label: 'الموقف؟', text: 'هل الموقف مجاني؟ وهل يوجد غسيل سيارات؟' },
+    { label: 'وصول مبكر', text: 'هل يمكن الوصول المبكر؟' },
+    { label: 'مغادرة متأخرة', text: 'هل يمكن المغادرة المتأخرة؟' },
+    { label: 'الحرم كبير؟', text: 'المنتجع كبير وصعب التنقّل، هل توجد عربة غولف؟' },
+    { label: 'أمتعة متأخرة', text: 'لم تصل حقائبي إلى الغرفة' },
+    { label: 'ثلاجة فارغة', text: 'الميني بار فارغ، أريد إعادة التعبئة' },
+    { label: 'المسبح يغلق؟', text: 'متى يغلق المسبح والشاطئ؟' },
+    { label: 'شكوى صيانة', text: 'هناك تسريب في صرف الدش' },
+    {
+      label: 'تعديل حجز',
+      text: 'أريد تعديل حجزي. الاسم سارة خان، الهاتف +971 50 111 2222، رقم التأكيد ERTH-88421، أريد تغيير تاريخ الوصول إلى 2026-11-05',
+    },
+    { label: 'موظف', text: 'أريد التحدث مع موظف' },
+    { label: 'English', text: 'English please' },
+  ],
+} as const
+
+const PRIORITY: (keyof typeof KNOWLEDGE)[] = [
+  'luggage_delay',
+  'minibar',
+  'maintenance',
+  'noise',
+  'soundproofing',
+  'pool_hours',
+  'pool_busy',
+  // High-traffic factual FAQs before fuzzy campus/room keywords
+  'airport',
+  'parking',
+  'location',
+  'spa',
+  'car_wash',
+  'campus_size',
+  'buffet_variety',
+  'poolside_menu',
+  'value_price',
+  'expectations',
+  'room_size',
+  'toddlers',
+  'sauna_access',
+  'praise_breakfast',
+  'rates',
+  'michelin',
+  'al_rimal',
+  'ergon',
+  'beetza',
+  'asrah',
+  'room_service',
+  'water_sports',
+  'butler',
+  'early_checkin',
+  'late_checkout',
+  'breakfast_included',
+  'pool_access',
+  'complimentary_extras',
+  'villas',
+  'extra_bed',
+  'connecting',
+  'mudeef',
+  'al_rayeh',
+  'mosque',
+  'whatsapp_confirm',
+  'room_types',
+  'amenities',
+  'deposit',
+  'cancellation',
+  'payment',
+  'id_documents',
+  'wifi',
+  'pool',
+  'beach',
+  'gym',
+  'padel',
+  'bowling',
+  'ladies',
+  'kids',
+  'family',
+  'pets',
+  'prayer',
+  'smoking',
+  'accessibility',
+  'laundry',
+  'concierge',
+  'luggage',
+  'business',
+  'group',
+  'dress_code',
+  'weather',
+  'taxi',
+  'weddings',
+  'events',
+  'awards',
+  'sustainability',
+  'story',
+  'contact',
+  'languages',
+  'after_hours',
+  'dining',
+  'check_in',
+]
+
+export function matchFaq(text: string): FaqKey | null {
+  for (const key of PRIORITY) {
+    if (KNOWLEDGE[key].keywords.test(text)) return key
+  }
+  for (const key of Object.keys(KNOWLEDGE) as FaqKey[]) {
+    if (KNOWLEDGE[key].keywords.test(text)) return key
+  }
+  return null
+}

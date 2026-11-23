@@ -1,0 +1,47 @@
+{
+  "name": "desert-palm-receptionist-demo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx server/index.ts",
+    "dev:all": "concurrently -k -n web,api -c cyan,magenta \"vite\" \"tsx server/index.ts\"",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "smoke": "tsx scripts/smoke-test.mts",
+    "smoke:dental": "tsx scripts/dental-smoke.mts",
+    "smoke:dental-ui": "tsx scripts/dental-ui-leak.mts",
+    "ux": "tsx scripts/ux-regression.mts",
+    "test:wa": "tsx scripts/test-whatsapp.mts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "lucide-react": "^1.48.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4",
+    "twilio": "^5.4.5",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^9.1.2",
+    "oxlint": "^1.81.0",
+    "playwright": "^1.63.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.20.6",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}

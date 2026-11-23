@@ -1,0 +1,57 @@
+import type { DemoChip, IndustryPreset } from '../config/businessTypes'
+
+/** British English dental practice receptionist defaults. */
+export const dentalPreset: IndustryPreset = {
+  id: 'dental',
+  wording: {
+    bookingNoun: 'appointment',
+    bookingNounPlural: 'appointments',
+    customerNoun: 'patient',
+    customerNounPlural: 'patients',
+    teamNoun: 'practice team',
+    deskNoun: 'practice',
+    scheduleNoun: 'diary',
+    confirmVerb: 'confirm',
+    localeStyle: 'en-GB',
+  },
+  bookingFields: [
+    'guestName',
+    'phone',
+    'patientType',
+    'practice',
+    'reason',
+    'preferredDayTime',
+  ],
+  intents: [
+    'new_patient',
+    'existing_patient',
+    'emergency',
+    'pricing',
+    'membership',
+    'modify',
+    'hours',
+    'location',
+    'nervous',
+    'nhs',
+    'faq',
+    'human',
+    'goodbye',
+  ],
+  staffQueueLabels: {
+    title: 'Practice queue',
+    claim: 'Claim',
+    done: 'Done',
+    open: 'Open',
+    urgent: 'URGENT',
+  },
+  demoChips: [
+    { label: 'New patient', text: "Hi, I'd like to register as a new patient" },
+    { label: 'Toothache today', text: "I've got really bad toothache, can I be seen today?" },
+    { label: 'Emergency fee', text: 'How much is an emergency appointment?' },
+    { label: 'Membership', text: 'Do you do membership plans?' },
+    { label: 'Reschedule', text: 'I need to move my appointment on Thursday' },
+    { label: 'Saturday hours', text: 'What time are you open on Saturday?' },
+    { label: 'Nervous', text: "I'm really nervous about the dentist" },
+  ] satisfies DemoChip[],
+  voiceLocale: 'en-GB',
+}

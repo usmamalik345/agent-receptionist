@@ -1,0 +1,47 @@
+import type { IndustryPreset } from '../config/businessTypes'
+
+export const hotelPreset: IndustryPreset = {
+  id: 'hotel',
+  wording: {
+    bookingNoun: 'reservation',
+    bookingNounPlural: 'reservations',
+    customerNoun: 'guest',
+    customerNounPlural: 'guests',
+    teamNoun: 'reservations team',
+    deskNoun: 'reservations desk',
+    scheduleNoun: 'availability',
+    confirmVerb: 'confirm',
+    localeStyle: 'en-AE',
+  },
+  bookingFields: [
+    'checkIn',
+    'checkOut',
+    'rooms',
+    'roomCategory',
+    'adults',
+    'children',
+    'guestName',
+    'phone',
+    'specialRequests',
+  ],
+  intents: [
+    'reservation',
+    'modify',
+    'dining',
+    'spa',
+    'faq',
+    'rates',
+    'human',
+    'complaint',
+    'goodbye',
+  ],
+  staffQueueLabels: {
+    title: 'Staff queue',
+    claim: 'Claim',
+    done: 'Done',
+    open: 'Open',
+    urgent: 'High',
+  },
+  demoChips: [],
+  voiceLocale: 'en-US',
+}
