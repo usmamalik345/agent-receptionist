@@ -56,7 +56,10 @@ function fakeRedis(): Promise<{ port: number; store: Map<string, string>; close:
         buf = rest
         const [cmd, k, v] = args
         if (cmd === 'GET') sock.write(store.has(k) ? `$${Buffer.byteLength(store.get(k)!)}\r\n${store.get(k)}\r\n` : '$-1\r\n')
-        else if (cmd === 'SET') (store.set(k, v), sock.write('+OK\r\n'))
+        else if (cmd === 'SET') {
+          store.set(k, v)
+          sock.write('+OK\r\n')
+        }
         else sock.write('-ERR unknown\r\n')
       }
     })
