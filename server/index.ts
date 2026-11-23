@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url'
 import cors from 'cors'
 import express from 'express'
 import twilio from 'twilio'
+import { mountAgentRoutes } from './agentRoutes.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TTS_CACHE_DIR = path.join(__dirname, '..', '.tts-cache')
@@ -485,6 +486,9 @@ app.get('/api/tts', async (req, res) => {
     })
   }
 })
+
+/** Traced agent pipeline + browser trace ingest (local, no outbound messages) */
+mountAgentRoutes(app)
 
 app.listen(PORT, () => {
   const provider = pickProvider()
