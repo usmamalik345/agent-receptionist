@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": [
+    "server/router.ts",
+    "server/tracing.ts",
+    "server/latency.ts",
+    "server/agentTurn.ts",
+    "server/agentRoutes.ts",
+    "scripts/trace-utils.mts",
+    "scripts/latency-report.mts",
+    "scripts/failure-report.mts",
+    "scripts/eval-gate.mts",
+    "tests/**/*.ts"
+  ]
+}
