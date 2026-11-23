@@ -110,7 +110,7 @@ class FirstAudioGate {
     clearTimeout(this.timer)
     this.text = text
     this.kind = kind
-    this.atMs = Math.round(performance.now() - this.t0)
+    this.atMs = Math.round((performance.now() - this.t0) * 100) / 100
     this.cb?.(text, this.atMs, kind)
   }
 }
@@ -350,6 +350,7 @@ export class AgentRuntime {
         text_ = TOOL_FAILURE_TEXT
         handoff = true
         outcome = 'transferred'
+        this.logDecision({ ...decision, ts: new Date().toISOString(), route: 'human', reason: `tool_failure:create_ticket:${run.error}` })
       }
     }
 

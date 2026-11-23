@@ -26,7 +26,7 @@ export function percentile(values: number[], p: number): number | null {
   return v[Math.min(v.length - 1, Math.max(0, Math.ceil((p / 100) * v.length) - 1))]
 }
 
-export const fmt = (n: number | null | undefined, unit = ''): string => (n == null ? 'n/a' : `${Math.round(n * 10) / 10}${unit}`)
+export const fmt = (n: number | null | undefined, unit = '', dp = 1): string => (n == null ? 'n/a' : `${Math.round(n * 10 ** dp) / 10 ** dp}${unit}`)
 
 export const mdTable = (head: string[], rows: Array<Array<string | number>>): string =>
   [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map((r) => `| ${r.join(' | ')} |`)].join('\n')

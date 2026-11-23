@@ -9,8 +9,9 @@ import 'dotenv/config'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { AgentRuntime, type TurnResult } from '../server/agentTurn.ts'
+import { AgentRuntime } from '../server/agentTurn.ts'
 import { jsonlSink } from '../server/tracing.ts'
+import { checkTurn, type EvalCase } from './expect.mts'
 import { mdTable, readJsonl } from './trace-utils.mts'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -18,40 +19,6 @@ const argv = process.argv.slice(2)
 const gate = argv.includes('--gate')
 const casesFile = argv.find((a) => !a.startsWith('--')) ?? path.join(ROOT, 'evals', 'dental.jsonl')
 const threshold = Number(process.env.EVAL_THRESHOLD || 0.9)
-
-interface Expect {
-  route?: string
-  match?: string[]
-  not_match?: string[]
-  outcome?: string[]
-  step?: string
-  handoff?: boolean
-  emergency?: boolean
-  ticket?: boolean
-  ticket_priority?: string
-}
-interface EvalCase {
-  id: string
-  business?: string
-  description: string
-  after_hours?: boolean
-  turns: Array<{ text: string; expect: Expect }>
-}
-
-function checkTurn(r: TurnResult, e: Expect): string[] {
-  const errs: string[] = []
-  if (e.route && r.route !== e.route) errs.push(`route ${r.route} != ${e.route}`)
-  for (const m of e.match ?? []) if (!new RegExp(m, 'i').test(r.text)) errs.push(`missing /${m}/`)
-  for (const m of e.not_match ?? []) if (new RegExp(m, 'i').test(r.text)) errs.push(`forbidden /${m}/`)
-  if (e.outcome && !e.outcome.includes(String(r.outcome))) errs.push(`outcome ${r.outcome} not in [${e.outcome}]`)
-  if (e.step && r.step !== e.step) errs.push(`step ${r.step} != ${e.step}`)
-  if (e.handoff !== undefined && r.handoff !== e.handoff) errs.push(`handoff ${r.handoff} != ${e.handoff}`)
-  if (e.emergency !== undefined && Boolean(r.booking.isEmergency) !== e.emergency) errs.push(`emergency ${r.booking.isEmergency} != ${e.emergency}`)
-  if (e.ticket && !r.reply?.createTicket) errs.push('no ticket')
-  const prio = r.reply?.createTicket?.priority
-  if (e.ticket_priority && prio !== e.ticket_priority) errs.push(`ticket priority ${prio} != ${e.ticket_priority}`)
-  return errs
-}
 
 const cases = readJsonl<EvalCase>(casesFile)
 if (cases.length === 0) {
