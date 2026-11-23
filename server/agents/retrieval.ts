@@ -10,6 +10,8 @@ export interface Passage {
   text: string
   /** which config field the passage came from */
   source: 'faq' | 'pricing' | 'service' | 'hours' | 'location' | 'emergency' | 'about' | 'after_hours'
+  /** Extra index-only terms (e.g. words from the FAQ's keyword regex); never spoken */
+  terms?: string
 }
 export interface ScoredPassage extends Passage {
   score: number
@@ -22,10 +24,16 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 
 export function buildPassages(biz: BusinessConfig): Passage[] {
   const out: Passage[] = []
-  biz.faqs.forEach((f, i) => out.push({ id: `faq:${i}`, source: 'faq', text: `Q: ${f.q} A: ${f.a}` }))
+  biz.faqs.forEach((f, i) =>
+    out.push({ id: `faq:${i}`, source: 'faq', text: `Q: ${f.q} A: ${f.a}`, terms: f.keywords ? regexTerms(f.keywords) : undefined }),
+  )
   biz.pricing.forEach((p, i) => out.push({ id: `price:${i}`, source: 'pricing', text: `${p.item}: ${p.price}.` }))
   biz.services.forEach((s, i) =>
-    out.push({ id: `service:${i}`, source: 'service', text: s.priceNote ? `${s.name}: ${s.priceNote}` : `${s.name} is offered.` }),
+    out.push({
+      id: `service:${i}`,
+      source: 'service',
+      text: !s.priceNote ? `${s.name} is offered.` : /^available$/i.test(s.priceNote) ? `${s.name} is available.` : `${s.name}: ${s.priceNote}.`,
+    }),
   )
   for (const loc of biz.locations) {
     const days = (Object.keys(DAY_NAMES) as DayKey[]).map((d) => `${DAY_NAMES[d]} ${loc.hours[d]}`).join(', ')
@@ -38,6 +46,11 @@ export function buildPassages(biz: BusinessConfig): Passage[] {
   if (biz.about) out.push({ id: 'about', source: 'about', text: biz.about })
   if (biz.afterHoursMessage) out.push({ id: 'after-hours', source: 'after_hours', text: biz.afterHoursMessage })
   return out
+}
+
+/** Literal words inside a keyword regex source, e.g. /pay(ment| as you go)|monthly/ -> "pay ment as you go monthly". */
+export function regexTerms(re: RegExp): string {
+  return re.source.replace(/\\[a-z]\*?|\\b|[?*+]/gi, ' ').replace(/[^a-z\s]/gi, ' ').replace(/\s+/g, ' ').trim()
 }
 
 const STOP = new Set(
@@ -73,7 +86,7 @@ export class Bm25Index {
     this.k1 = k1
     this.b = b
     this.docs = passages.map((p) => {
-      const toks = tokenize(p.text)
+      const toks = tokenize(p.terms ? `${p.text} ${p.terms}` : p.text)
       const tf = new Map<string, number>()
       for (const t of toks) tf.set(t, (tf.get(t) ?? 0) + 1)
       for (const t of tf.keys()) this.df.set(t, (this.df.get(t) ?? 0) + 1)
