@@ -160,7 +160,7 @@ All of this runs locally and free: no LLM keys, no cloud, and nothing here sends
 
 ### Per-call tracing
 - `server/tracing.ts`: one `trace_id` per call. Each turn is one JSONL record in `logs/traces.jsonl` (override with `TRACE_FILE`). A record has spans (`router`, `engine`/`llm`, `tool`, `fallback`, plus browser `engine`), `ttfa_ms` (end of user speech -> first bot audio, measured in the browser), `endpointing_ms`, `first_audio_ready_ms` (server), `tts_ttfb_ms`, route + router decision, tool calls, outcome, failed clarification, hand-off, fallback and errors.
-- Tokens are recorded only when a real LLM reports usage. The current engine is a deterministic rule engine, so `tokens` stays `null` and nothing is estimated.
+- Tokens: rule/engine turns have `tokens: null` (no model). Model turns record usage; when the provider does not report usage (the offline mock never does) the count is estimated at ~4 chars/token and the trace says `tokens_estimated: true`.
 - Caller text is **not** stored. Set `TRACE_STORE_TEXT=1` to store a digit-masked preview from the server pipeline.
 - Browser demo: set `VITE_TRACE=1` and run `npm run dev:all`. Each turn is POSTed to `/api/trace` without caller text. Leave it unset for normal or deployed use.
 
@@ -186,7 +186,7 @@ If the primary responder misses `budget - headroom`, or errors, the ladder runs:
 
 The token cap works the same way: the first breach switches to the smaller model with a short context, and the second hands off to a human. Reasons are `budget_exceeded | token_cap | llm_timeout | llm_error`.
 
-Today the primary responder *is* the rule engine (sub-millisecond), so the ladder only fires when a slower LLM responder is plugged in. `tests/latency-fallback.test.ts` replays that with a simulated 2 s LLM.
+For rule/tool turns the primary responder is the rule engine (sub-millisecond). For retrieval turns it is the response agent on the configured LLM (mock by default), with the small-model tier as the fallback. `tests/latency-fallback.test.ts` replays that with a simulated 2 s LLM.
 
 ### Reports
 - `npm run report:latency [-- file.jsonl --include-eval]` -> `metrics/report.md`: p50/p95 TTFA, endpointing, engine, TTFT, TTS, by route; % over budget; fallbacks.
@@ -204,5 +204,63 @@ How to record test calls for real numbers:
 - `npm run eval:gate` exits **1** if accuracy < `EVAL_THRESHOLD` (default 0.9), so it is usable as a CI step.
 
 ### Tests
-- `npm test`: node:test via tsx (router, tracing, latency/fallback replay).
-- `npm run typecheck:server`: type-checks the new server/scripts/tests.
+- `npm test`: node:test via tsx - router, tracing, latency/fallback replay, agents + guard, LLM client (fetch stubbed, no network), cache (incl. a fake Redis server), cost, fault injection, filler-name bug, decision diff, and one replay test per failure category.
+- `npm run typecheck:server`: type-checks the server, scripts and tests.
+
+## Multi-agent, LLM, cache, cost, replay
+
+Everything below runs offline and free by default (`LLM_PROVIDER=mock`). Nothing calls a paid API; tests never touch the network.
+
+### Pipeline (`server/agentTurn.ts`)
+```
+transcript -> triage agent (intent + risk, rules) -> router (rule | tool | retrieval | human, decision log)
+  rule / tool  -> deterministic engine (+ create_ticket tool under an armed deadline)
+  retrieval    -> retrieval agent (BM25, citations) -> response agent (LLM) behind the latency ladder
+  human        -> hand-off
+-> guard (prices/times must be in the cited passages, no foreign phone/email, length cap) -> first audio
+```
+- **Triage** (`server/agents/triage.ts`): intent from the router rules plus a risk level (`high` for breathing/swallowing/severe swelling, `medium` for emergencies/complaints). High-risk turns stay on the rule path, which always speaks the configured 999 / A&E line and raises an URGENT ticket.
+- **Retrieval** (`server/agents/retrieval.ts`): BM25 over passages built from the business config only (FAQs, prices, services, hours and address per practice, emergency policy). It returns passage ids and scores, never prose.
+- **Response** (`server/agents/response.ts`): the prompt allows facts from CONTEXT only and asks for `[passage-id]` citations. Citations are stripped before TTS and kept in the trace. It only runs when the engine's answer is stateless (FAQ), so booking flows stay deterministic.
+- **Guard** (`server/agents/guard.ts`): model output with an ungrounded price/time or someone else's phone/email is **blocked**, and the caller gets the deterministic engine answer instead. Model output over `guardMaxChars` (320) is cut at a sentence. Engine copy is never cut (it carries safety lines); it only gets a `long_reply` warning.
+- `MULTI_AGENT=0` turns the retrieval/response agents off (engine only).
+
+### LLM providers (`server/llm.ts`)
+| `LLM_PROVIDER` | Key | Default model | Notes |
+|---|---|---|---|
+| `mock` (default) | none | `mock-primary` / `mock-small` | Deterministic and extractive: answers with the first passage and cites it. $0. |
+| `groq` | free key from console.groq.com | `openai/gpt-oss-20b` | OpenAI-compatible endpoint. The free tier has rate limits. |
+| `gemini` | free key from aistudio.google.com | `gemini-2.5-flash-lite` | OpenAI-compatible endpoint. The free tier has rate limits. |
+| `openai-compatible` | optional | `llama3.2:3b` | For example local Ollama: `LLM_BASE_URL=http://localhost:11434/v1`. |
+
+Set `LLM_MODEL`, `LLM_SMALL_MODEL` (fallback tier), `LLM_BASE_URL` and `LLM_TIMEOUT_MS` as needed. If `groq`/`gemini` has no `LLM_API_KEY`, the client falls back to mock and says so. Keys come from env only and are never committed.
+
+### Cache (`server/cache.ts`)
+Stateless answers (retrieval/FAQ turns) are cached after the guard passes. The key is `sha256(normalized question)` + business + `POLICY_VERSION`, with a TTL of `ANSWER_CACHE_TTL_MS`. The default backend is an in-memory LRU (`CACHE_MAX_ENTRIES`). Set `REDIS_URL` to use Redis through a small built-in RESP client (no extra dependency); if Redis is down, the cache falls back to the LRU. Hit/miss counters feed the replay report. Slot-filling replies are never cached.
+
+### Cost (`server/cost.ts`, `config/llm-prices.json`)
+Prices are dated config (`as_of`), in USD per 1M tokens: `cost_turn = prompt * in_rate + completion * out_rate`. An unknown model gives `cost: null` and is never guessed. STT/TTS/transport rates are `null` until you fill them. Each trace has `tokens`, `tokens_estimated`, `cost_usd` and `token_cap_hit`, and `AgentRuntime.ledger` keeps per-call totals.
+
+### Tools and fault handling (`server/tools.ts`, `server/voicePipeline.ts`)
+- `runTool` arms a deadline that **only a final result clears**. `ctx.progress()` updates do not disarm it, which is the Pipecat PR #5760 failure mode. A failed or timed-out `create_ticket` never lets the agent say "sent": the caller gets an apology and a hand-off, and a decision record `tool_failure:...` is written.
+- First-audio gate: if the reply is not ready by `budget - headroom - stt_ms`, "One moment, please." is emitted as first audio. STT time comes out of the budget.
+- `runVoiceTurn` simulates STT -> agent -> TTS with injected adapters. If TTS is slow, a pre-rendered filler clip plays at the budget.
+- Tool args are schema-checked (`tool_misuse`).
+
+### 100-call replay harness
+```bash
+npm run replay:fixtures     # regenerate evals/replay/calls.jsonl (seeded, 100 synthetic calls)
+npm run replay              # clean run   -> metrics/replay/latest/{report.md,summary.json,traces,decisions,results}
+npm run replay:gate         # + exit 1 if eval pass < EVAL_THRESHOLD, safety < 100%, or p95 first-audio > budget
+npm run replay:faults       # deterministic faults: every 4th model call 2x budget, every 5th ticket tool progress-then-stall
+npm run replay -- --write-baseline   # refresh evals/replay/baseline.decisions.jsonl (explain route changes in the PR)
+```
+Reported values: eval pass, route accuracy, safety cases, grounded rate, tool validity, server first-audio-ready p50/p95, per-stage p50/p95, route share, hand-off rate, cache hit rate, fallback / small-model %, token-cap %, tokens and cost per call. A cost projection at a paid rate is shown separately and labelled as a projection.
+**What these numbers are:** wall-clock on the machine for the server pipeline only, using the mock provider and synthetic calls. They are **not** real TTFA: STT, real LLM TTFT, TTS and network are not included. Record real calls (see above) for those.
+
+### Failure taxonomy, decision diff
+- `npm run report:failures` reads `logs/traces.jsonl` and the latest replay outputs. It builds categories automatically (`scripts/taxonomy.mts`: span errors/timeouts, tool errors/misuse, fallbacks, hand-offs, low confidence, failed clarifications, ungrounded answers, PII, long replies, token cap, latency, wrong route, missed hand-off) and lists, for each category, the replay test that must keep passing (`evals/taxonomy.json` -> `tests/replay-taxonomy.test.ts`). `--require-coverage` fails if a category has no test.
+- `npm run replay:diff [-- old.jsonl new.jsonl] [--fail-on-change]` compares route/reason/intent/risk/fallback per fixture turn between two replay runs (default: committed baseline vs latest) -> `metrics/decision-diff.md`.
+
+### CI (`.github/workflows/ci.yml`)
+Runs build, lint, typecheck, `npm test`, `eval:gate` (`EVAL_THRESHOLD=0.9`), `replay:gate` on mock, decision diff vs the baseline, a fault-injected replay (report only) and the taxonomy coverage check. It uploads `metrics/` as an artifact. `npm run ci` runs the same steps locally.
