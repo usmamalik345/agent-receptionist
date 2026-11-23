@@ -159,7 +159,7 @@ function findPricing(biz: BusinessConfig, text: string): string | null {
     const key = p.item.toLowerCase()
     if (
       (key.includes('emergency') && /emergency|toothache|pain/.test(t)) ||
-      (key.includes('membership') && /membership|plan|monthly/.test(t))
+      (key.includes('membership') && /membership|\bplans?\b|monthly/.test(t))
     ) {
       return `${p.item}: ${p.price}`
     }
