@@ -1,0 +1,17 @@
+{
+  "_note": "Price table is CONFIG, not a measurement. USD per 1M tokens. Check the provider's price page before quoting any cost; update as_of when you do. Free-tier usage is billed $0 - the paid rates are kept for projections only.",
+  "as_of": "2026-11-24",
+  "models": {
+    "mock-primary": { "input_per_1m": 0, "output_per_1m": 0, "source": "offline mock, no spend" },
+    "mock-small": { "input_per_1m": 0, "output_per_1m": 0, "source": "offline mock, no spend" },
+    "rule-engine": { "input_per_1m": 0, "output_per_1m": 0, "source": "deterministic code, no model" },
+    "cache": { "input_per_1m": 0, "output_per_1m": 0, "source": "cached answer, no model" },
+    "openai/gpt-oss-20b": { "input_per_1m": 0.075, "output_per_1m": 0.3, "source": "https://console.groq.com/docs/models (Groq paid tier; free tier = $0)" },
+    "openai/gpt-oss-120b": { "input_per_1m": 0.15, "output_per_1m": 0.6, "source": "https://console.groq.com/docs/models (Groq paid tier; free tier = $0)" },
+    "gemini-2.5-flash-lite": { "input_per_1m": 0.1, "output_per_1m": 0.4, "source": "https://ai.google.dev/gemini-api/docs/pricing (paid tier; free tier = $0)" }
+  },
+  "projection_model": "openai/gpt-oss-20b",
+  "stt_per_minute": null,
+  "tts_per_1k_chars": null,
+  "transport_per_minute": null
+}
