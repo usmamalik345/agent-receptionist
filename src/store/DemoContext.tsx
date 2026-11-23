@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { greet, processGuestMessage } from '../lib/stateMachine'
+import { recordEngineTurn } from '../lib/turnTelemetry'
 import {
   bookingPrefillFromProfile,
   findGuestProfile,
@@ -451,6 +452,8 @@ export function DemoProvider({ children }: { children: ReactNode }) {
 
   const sendGuestMessage = useCallback((text: string): string => {
     let aiText = ''
+    // Per-turn telemetry (no-op unless VITE_TRACE=1); recorded after setData so StrictMode double-runs don't double-log
+    const telemetry: { turn: Parameters<typeof recordEngineTurn>[0] | null } = { turn: null }
     setData((prev) => {
       const guestEntry: TranscriptEntry = {
         id: crypto.randomUUID(),
@@ -511,15 +514,27 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         )
       }
 
+      const stepBefore = prev.session.step === 'idle' ? 'await_intent' : prev.session.step
+      const engineStart = performance.now()
       const reply = processGuestMessage({
         text,
-        step: prev.session.step === 'idle' ? 'await_intent' : prev.session.step,
+        step: stepBefore,
         booking: prev.session.booking,
         language: prev.settings.language,
         afterHours: prev.settings.afterHours,
         humanTakeover: prev.settings.humanTakeover,
         operaReadEnabled: prev.settings.operaReadEnabled,
       })
+      telemetry.turn = {
+        callId: prev.session.id,
+        channel: prev.session.channel,
+        text,
+        stepBefore,
+        bookingBefore: prev.session.booking,
+        engineStart,
+        engineEnd: performance.now(),
+        reply,
+      }
 
       let booking = { ...prev.session.booking, ...reply.bookingUpdates }
       let replyText = reply.text
@@ -687,6 +702,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       }
       return next
     })
+    if (telemetry.turn) recordEngineTurn(telemetry.turn)
     return aiText
   }, [archiveIfEnded])
 

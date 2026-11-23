@@ -1,6 +1,7 @@
 import { ARABIC_GREETING, ENGLISH_GREETING } from '../config/resort'
 import { getActiveBusiness } from './businessRuntime'
 import { sanitizeForSpeech } from './speakSanitize'
+import { markFirstAudio } from './turnTelemetry'
 import type { Language } from './types'
 
 const GREETING_AUDIO: Partial<Record<Language, string>> = {
@@ -265,6 +266,7 @@ function speakOnce(
 
     utter.onstart = () => {
       started = true
+      markFirstAudio()
     }
     utter.onend = () => done(started)
     utter.onerror = () => done(false)
@@ -363,6 +365,7 @@ function playAudioUrl(url: string): Promise<boolean> {
     }
     audio.onended = () => done(true)
     audio.onerror = () => done(false)
+    audio.onplaying = () => markFirstAudio()
     const p = audio.play()
     if (!p) {
       done(false)

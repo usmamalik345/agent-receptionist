@@ -1,3 +1,4 @@
+import { markTtsRequested, markUserSpeechEnd } from '../lib/turnTelemetry'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   History,
@@ -339,6 +340,7 @@ export function DashboardPage() {
     setAiSpeaking(true)
     setListening(false)
     try {
+      markTtsRequested()
       await speakText(text, lang, { retry: lang === 'ar', ...opts })
     } finally {
       aiSpeakingRef.current = false
@@ -443,6 +445,7 @@ export function DashboardPage() {
       const heard = readFullTranscript(ev)
       if (!heard) return
       transcriptBufferRef.current = heard
+      markUserSpeechEnd()
       setInterimText(heard)
       clearFinalizeTimer()
       finalizeTimerRef.current = setTimeout(() => {
