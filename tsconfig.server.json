@@ -1,8 +1,13 @@
 {
   "compilerOptions": {
     "target": "es2023",
-    "lib": ["ES2023", "DOM"],
-    "types": ["node"],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -13,7 +18,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "resolveJsonModule": true
   },
   "include": [
     "server/router.ts",
@@ -21,10 +27,19 @@
     "server/latency.ts",
     "server/agentTurn.ts",
     "server/agentRoutes.ts",
+    "server/llm.ts",
+    "server/cache.ts",
+    "server/cost.ts",
+    "server/tools.ts",
+    "server/agents/*.ts",
+    "server/voicePipeline.ts",
     "scripts/trace-utils.mts",
     "scripts/latency-report.mts",
     "scripts/failure-report.mts",
     "scripts/eval-gate.mts",
+    "scripts/replay-harness.mts",
+    "scripts/gen-replay-fixtures.mts",
+    "scripts/decision-diff.mts",
     "tests/**/*.ts"
   ]
 }

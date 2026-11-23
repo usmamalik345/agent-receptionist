@@ -60,6 +60,9 @@ export interface RouterDecision {
   latency_ms: number
   /** Set when the latency/token ladder overrode the normal path */
   fallback_reason?: FallbackReason
+  /** Triage agent output (intent + risk); model 'rules' = deterministic classifier */
+  triage?: { intent: Intent; risk: 'low' | 'medium' | 'high'; confidence: number; model: string }
+  budget?: { ttfa_target_ms: number; tokens_used: number; token_cap: number }
 }
 
 const RULE_INTENTS = new Set<Intent>(['emergency', 'hours', 'location', 'membership', 'nervous', 'nhs', 'rates', 'goodbye', 'confirm', 'deny'])

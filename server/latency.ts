@@ -9,7 +9,9 @@
  * Today the primary responder is the deterministic rule engine (no LLM in this repo),
  * so the ladder only fires when a slower responder (e.g. a future LLM) is plugged in.
  */
+import { LruCache, type ResponseCache } from './cache.ts'
 import type { FallbackReason } from './router.ts'
+export { normalizeQuestion } from './cache.ts'
 
 export interface LatencyConfig {
   budgetMs: number
@@ -58,40 +60,17 @@ export interface ResponderOutput {
   ttftMs?: number
   /** opaque payload passed through (e.g. engine reply) */
   payload?: unknown
+  /** Model that produced the text (LLM responders) */
+  model?: string
 }
 export interface Responder {
   name: string
   respond(input: ResponderInput): Promise<ResponderOutput>
 }
 
-export const normalizeQuestion = (text: string): string =>
-  text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
-
-/** In-memory TTL cache. TODO: optional Redis backend if multi-instance is ever needed. */
-export class AnswerCache {
-  private store = new Map<string, { value: string; expires: number }>()
-  private readonly ttlMs: number
-  private readonly clock: () => number
-  constructor(ttlMs: number, clock: () => number = Date.now) {
-    this.ttlMs = ttlMs
-    this.clock = clock
-  }
-  key(text: string, business: string, policyVersion: string): string {
-    return `${business}|${policyVersion}|${normalizeQuestion(text)}`
-  }
-  get(key: string): string | null {
-    const hit = this.store.get(key)
-    if (!hit) return null
-    if (hit.expires < this.clock()) {
-      this.store.delete(key)
-      return null
-    }
-    return hit.value
-  }
-  set(key: string, value: string): void {
-    this.store.set(key, { value, expires: this.clock() + this.ttlMs })
-  }
-}
+/** Back-compat name: the in-memory LRU response cache (see server/cache.ts). */
+export const AnswerCache = LruCache
+export type AnswerCache = LruCache
 
 export class TokenBudget {
   private used = new Map<string, number>()
@@ -134,6 +113,10 @@ export interface LadderResult {
   tokens: { prompt: number; completion: number } | null
   ttftMs: number | null
   payload?: unknown
+  /** Served from the response cache before calling any model */
+  cacheHit: boolean
+  /** The per-call token cap was hit on this turn */
+  tokenCapHit: boolean
 }
 
 type Race = { ok: true; out: ResponderOutput } | { ok: false; error?: string }
@@ -162,17 +145,28 @@ export interface LadderDeps {
   config: LatencyConfig
   primary: Responder
   fallback: Responder
-  cache: AnswerCache
+  cache: ResponseCache
   tokens: TokenBudget
   clock?: () => number
+  /** Answer is stateless (FAQ/retrieval) -> may be looked up first and cached. Default false. */
+  cacheable?: boolean
+  /** Write primary/smaller-model answers into the cache (default: same as cacheable).
+   *  The runtime sets false and writes only after the guard passed. */
+  writeCache?: boolean
+  /** Time already spent before the agent got the transcript (STT/endpointing). Shrinks the deadline. */
+  elapsedBeforeMs?: number
 }
 
 export async function respondWithinBudget(callId: string, business: string, text: string, deps: LadderDeps): Promise<LadderResult> {
   const clock = deps.clock ?? (() => performance.now())
   const t0 = clock()
   const { config, cache, tokens } = deps
+  const cacheable = deps.cacheable ?? false
+  const writeCache = deps.writeCache ?? cacheable
   const cacheKey = cache.key(text, business, config.policyVersion)
   const since = () => Math.round(clock() - t0)
+  const primaryDeadline = Math.max(0, config.budgetMs - config.headroomMs - (deps.elapsedBeforeMs ?? 0))
+  let tokenCapHit = false
 
   const finish = (
     out: ResponderOutput,
@@ -182,13 +176,15 @@ export async function respondWithinBudget(callId: string, business: string, text
     filler?: number,
   ): LadderResult => {
     if (out.tokens) tokens.add(callId, out.tokens.prompt + out.tokens.completion)
-    if (step === 'primary' || step === 'smaller_model') cache.set(cacheKey, out.text)
+    if (writeCache && (step === 'primary' || step === 'smaller_model')) void cache.set(cacheKey, out.text)
     return {
       text: out.text,
       firstAudioText: filler !== undefined ? FILLER_TEXT : out.text,
       firstAudioAtMs: filler ?? since(),
-      model,
+      model: out.model ?? model,
       step,
+      cacheHit: step === 'cache' && fallback === null,
+      tokenCapHit,
       handoff: false,
       fallback,
       tokens: out.tokens ?? null,
@@ -206,22 +202,32 @@ export async function respondWithinBudget(callId: string, business: string, text
     fallback: { reason, step: 'human' },
     tokens: null,
     ttftMs: null,
+    cacheHit: false,
+    tokenCapHit,
   })
+
+  // (a) same question already answered (and guarded) for this business + policy version
+  if (cacheable) {
+    const hit = await cache.get(cacheKey)
+    if (hit !== null) return finish({ text: hit }, 'cache', 'cache', null)
+  }
 
   // Token cap
   if (tokens.wouldExceed(callId, estimateTokens(text))) {
+    tokenCapHit = true
     if (tokens.hit(callId) >= 2) return handoff('token_cap')
     const fb = await raceTimeout(deps.fallback, { text, shortContext: true }, config.fallbackTimeoutMs)
     if (fb.ok) return finish(fb.out, config.fallbackModel, 'smaller_model', { reason: 'token_cap', step: 'smaller_model' })
     return handoff('token_cap')
   }
 
-  const primary = await raceTimeout(deps.primary, { text }, Math.max(0, config.budgetMs - config.headroomMs))
+  const primary = await raceTimeout(deps.primary, { text }, primaryDeadline)
   if (primary.ok) return finish(primary.out, config.primaryModel, 'primary', null)
 
   const reason: FallbackReason = primary.error ? 'llm_error' : 'budget_exceeded'
-  const cached = cache.get(cacheKey)
-  if (cached) return finish({ text: cached }, 'cache', 'cache', { reason, step: 'cache' })
+  // Fallback lookup reads the cache even for non-cacheable turns (back-compat), but those are never written.
+  const cached = await cache.get(cacheKey)
+  if (cached !== null) return finish({ text: cached }, 'cache', 'cache', { reason, step: 'cache' })
 
   // Filler is spoken now (at the deadline) so first audio stays inside the budget
   const fillerAt = since()

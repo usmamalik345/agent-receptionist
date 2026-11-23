@@ -66,6 +66,19 @@ export interface TurnTrace {
   reply_chars: number | null
   user_text?: string
   error: string | null
+  // --- multi-agent fields (optional; absent in older traces) ---
+  risk?: 'low' | 'medium' | 'high'
+  /** engine = deterministic rule engine; multi_agent = retrieval + response agent */
+  agent_path?: 'engine' | 'multi_agent'
+  retrieval?: { ids: string[]; scores: number[]; grounded: boolean; ms: number } | null
+  citations?: string[]
+  guard?: { ok: boolean; blocked: boolean; violations: Array<{ kind: string; value: string }> } | null
+  cache_hit?: boolean
+  token_cap_hit?: boolean
+  tokens_estimated?: boolean
+  cost_usd?: number | null
+  /** 'filler' when the filler line went out first because the deadline passed */
+  first_audio_kind?: 'reply' | 'filler'
 }
 
 export type Sink = (record: object) => void
