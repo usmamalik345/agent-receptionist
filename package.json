@@ -14,7 +14,13 @@
     "smoke:dental": "tsx scripts/dental-smoke.mts",
     "smoke:dental-ui": "tsx scripts/dental-ui-leak.mts",
     "ux": "tsx scripts/ux-regression.mts",
-    "test:wa": "tsx scripts/test-whatsapp.mts"
+    "test:wa": "tsx scripts/test-whatsapp.mts",
+    "test": "tsx --test tests/router.test.ts tests/tracing.test.ts tests/latency-fallback.test.ts",
+    "typecheck:server": "tsc -p tsconfig.server.json",
+    "eval": "tsx scripts/eval-gate.mts",
+    "eval:gate": "tsx scripts/eval-gate.mts --gate",
+    "report:latency": "tsx scripts/latency-report.mts",
+    "report:failures": "tsx scripts/failure-report.mts"
   },
   "dependencies": {
     "cors": "^2.8.5",

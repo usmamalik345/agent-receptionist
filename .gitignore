@@ -32,3 +32,6 @@ recordings/
 _wa-ui-test.zip
 *.zip
 metrics/*.jsonl
+
+# Generated reports (re-create with npm run report:* / eval)
+metrics/

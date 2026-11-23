@@ -153,3 +153,56 @@ Copy `.env.example` to `.env` if you want optional live STT/TTS providers later.
 npm run build
 npm run preview
 ```
+
+## Tracing, router, latency budget & eval gate
+
+All of this runs locally and free: no LLM keys, no cloud, and nothing here sends WhatsApp/SMS/calls.
+
+### Per-call tracing
+- `server/tracing.ts`: one `trace_id` per call. Each turn is one JSONL record in `logs/traces.jsonl` (override with `TRACE_FILE`). A record has spans (`router`, `engine`/`llm`, `tool`, `fallback`, plus browser `engine`), `ttfa_ms` (end of user speech -> first bot audio, measured in the browser), `endpointing_ms`, `first_audio_ready_ms` (server), `tts_ttfb_ms`, route + router decision, tool calls, outcome, failed clarification, hand-off, fallback and errors.
+- Tokens are recorded only when a real LLM reports usage. The current engine is a deterministic rule engine, so `tokens` stays `null` and nothing is estimated.
+- Caller text is **not** stored. Set `TRACE_STORE_TEXT=1` to store a digit-masked preview from the server pipeline.
+- Browser demo: set `VITE_TRACE=1` and run `npm run dev:all`. Each turn is POSTed to `/api/trace` without caller text. Leave it unset for normal or deployed use.
+
+### Router (`server/router.ts`)
+Each final transcript gets exactly one route:
+1. `rule`: known deterministic intents (hours, fees, membership, emergency, nervous, NHS, goodbye, confirm/deny). Confidence 0.95.
+2. `tool`: booking / registration / reschedule (0.9), plus slot filling while fields are being collected (0.85).
+3. `retrieval`: FAQ / knowledge corpus match (0.8). With no match, confidence is 0.4.
+4. `human`: explicit ask, confidence < **0.55**, or **2** consecutive failed clarifications.
+
+The confidences are fixed heuristics per triage path, not a trained model. Every decision (`call_id, turn_id, route, reason, confidence, matched_rule, latency_ms`) is printed to stdout and appended to `logs/router_decisions.jsonl`. Fallbacks add a record with `fallback_reason`.
+
+- In the browser the router is **observe-only** (logged, reply unchanged).
+- On the server endpoint `POST /api/agent/start` -> `POST /api/agent/turn {callId, text}` it can enforce hand-off with `ROUTER_ENFORCE=1`.
+
+### Latency budget, token cap, fallback ladder (`server/latency.ts`)
+Settings: `LATENCY_BUDGET_FIRST_AUDIO_MS` (800), `LATENCY_HEADROOM_MS` (150), `MAX_TOKENS_PER_CALL` (6000), `LLM_PRIMARY_MODEL`, `LLM_FALLBACK_MODEL`, `FALLBACK_TIMEOUT_MS`, `ANSWER_CACHE_TTL_MS`, `POLICY_VERSION`.
+
+If the primary responder misses `budget - headroom`, or errors, the ladder runs:
+- (a) cached answer (normalized question + business + policy version, TTL),
+- (b) smaller model, with the filler line "One moment, please." spoken at the deadline,
+- (c) filler + human hand-off.
+
+The token cap works the same way: the first breach switches to the smaller model with a short context, and the second hands off to a human. Reasons are `budget_exceeded | token_cap | llm_timeout | llm_error`.
+
+Today the primary responder *is* the rule engine (sub-millisecond), so the ladder only fires when a slower LLM responder is plugged in. `tests/latency-fallback.test.ts` replays that with a simulated 2 s LLM.
+
+### Reports
+- `npm run report:latency [-- file.jsonl --include-eval]` -> `metrics/report.md`: p50/p95 TTFA, endpointing, engine, TTFT, TTS, by route; % over budget; fallbacks.
+- `npm run report:failures [-- file.jsonl]` -> `metrics/failures.md`: categories derived only from trace fields (span errors/timeouts, tool errors, fallbacks, hand-offs by reason, low confidence, failed clarifications, generic fallback replies, empty answers, over budget).
+
+How to record test calls for real numbers:
+1. Set `VITE_TRACE=1` in `.env.local`.
+2. Run `npm run dev:all`.
+3. Open `/dashboard?biz=mm-dental` and do ~100 voice calls using the demo chips or your own lines.
+4. Run both reports.
+
+### Accuracy evals = release gate
+- `evals/dental.jsonl`: cases built from the MM Dental config (hours, fees, membership, emergency, NHS / unpublished prices -> callback, reschedule, hand-off, low confidence, repeated clarification failure).
+- `npm run eval` runs them offline through the full pipeline (router enforced) -> `metrics/eval.md`. Traces go to `logs/traces.eval.jsonl`.
+- `npm run eval:gate` exits **1** if accuracy < `EVAL_THRESHOLD` (default 0.9), so it is usable as a CI step.
+
+### Tests
+- `npm test`: node:test via tsx (router, tracing, latency/fallback replay).
+- `npm run typecheck:server`: type-checks the new server/scripts/tests.
