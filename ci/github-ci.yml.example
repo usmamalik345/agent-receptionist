@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Offline + free: mock LLM, no keys, no network calls to model providers
+      LLM_PROVIDER: mock
+      MULTI_AGENT: '1'
+      EVAL_THRESHOLD: '0.9'
+      LATENCY_BUDGET_FIRST_AUDIO_MS: '800'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck server
+        run: npm run typecheck:server
+      - name: Unit, replay and fault-injection tests
+        run: npm test
+      - name: Eval gate (EVAL_THRESHOLD 0.9)
+        run: npm run eval:gate
+      - name: 100-call replay harness (mock provider) + gate
+        run: npm run replay:gate
+      - name: Decision-log diff vs committed baseline
+        run: npm run replay:diff -- --fail-on-change
+      - name: Fault-injected replay (report only)
+        run: npm run replay:faults
+      - name: Failure taxonomy (every observed category needs a replay test)
+        run: npm run report:failures -- --require-coverage
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-reports
+          path: |
+            metrics/
+          if-no-files-found: ignore
