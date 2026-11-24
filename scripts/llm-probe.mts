@@ -30,6 +30,7 @@ const paceMs = Number(flag('pace-ms') ?? 3100)
 const cases = readJsonl<ProbeCase>(path.join(ROOT, 'evals', 'llm-probe.jsonl'))
 const llm = loadLlmClient({ LLM_MAX_REQUESTS: '40', ...process.env })
 const remote = 'stats' in llm ? (llm as RemoteLlmClient) : null
+/** Heuristic only; every answer is also read by hand. */
 const ABSTAIN = /\b(team|confirm|check|not sure|don'?t have|do not have|can'?t say|unable)\b/i
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const pct = (xs: number[], p: number) => {
@@ -61,7 +62,7 @@ for (const [i, c] of cases.entries()) {
   }
   const totalMs = Math.round(performance.now() - t0)
   const cited = r.passages.filter((p) => citations.includes(p.id))
-  const g = guardReply({ text, source: 'llm', grounding: (cited.length ? cited : r.passages).map((p) => p.text), allowedContacts: mmDentalBusiness.locations.map((l) => l.phone) })
+  const g = guardReply({ text, source: 'llm', grounding: (cited.length ? cited : r.passages).map((p) => p.text), allowedContacts: mmDentalBusiness.locations.map((l) => l.phone), hours: mmDentalBusiness.locations, callerText: c.q })
   const spoken = g.blocked ? g.text : text
   const missing = (c.must ?? []).filter((m) => !new RegExp(m, 'i').test(spoken))
   const contradicts = (c.must_not ?? []).filter((m) => new RegExp(m, 'i').test(spoken))
@@ -71,7 +72,8 @@ for (const [i, c] of cases.entries()) {
     id: c.id, q: c.q, expect: c.expect, answer: spoken, raw_model: raw, error, citations, top_passage: r.passages[0]?.id ?? null,
     guard_blocked: g.blocked, guard_violations: g.violations.map((v) => v.kind), ttft_ms: ttft, total_ms: totalMs, tokens,
     missing_fact: missing, contradicts, abstained, asserted_without_source: assertedWithoutSource,
-    auto_wrong: !error && (contradicts.length > 0 || g.blocked || assertedWithoutSource),
+    // wrong = a contradiction the caller would HEAR; a guard block is counted separately (caller hears the safe line)
+    auto_wrong: !error && !g.blocked && (contradicts.length > 0 || assertedWithoutSource),
   })
   console.log(`${error ? 'ERR ' : rows.at(-1)!.auto_wrong ? 'WRONG' : missing.length ? 'MISS' : 'ok  '} ${c.id}: ${error ?? spoken}`)
 }
