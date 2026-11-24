@@ -1,0 +1,834 @@
+{
+  "title": "Real Groq run - openai/gpt-oss-20b, free plan, synthetic text calls, from cloud box",
+  "date": "2026-11-24",
+  "timezone_note": "timestamps in this file are UTC (Z); 07:30-07:47 UTC = 12:30-12:47 PM PKT",
+  "provider": "groq",
+  "model": "openai/gpt-oss-20b",
+  "plan": "free (no card, no paid tier)",
+  "where": "cloud box (Linux VM), not a phone line, not the laptop",
+  "settings": {
+    "stream": true,
+    "reasoning_effort": "low",
+    "include_reasoning": false,
+    "max_tokens_floor": 400,
+    "pace_ms_between_requests": 3100,
+    "latency_budget_ms": 800,
+    "primary_deadline_ms": 650,
+    "token_cap_per_call": 6000
+  },
+  "not_measured": [
+    "STT latency",
+    "TTS latency",
+    "real-audio time to first audio (TTFA)",
+    "real phone/WebRTC transport",
+    "human-rated answer quality"
+  ],
+  "final_runs": {
+    "replay_no_cache": {
+      "generated": "2026-11-24T07:45:09.512Z",
+      "label": "groq-real-nocache",
+      "cache_disabled": true,
+      "provider": "groq (LLM_PROVIDER=groq)",
+      "calls": 100,
+      "turns": 138,
+      "llm_requests": {
+        "requests": 25,
+        "http429": 0,
+        "errors": 0,
+        "lastRetryAfterMs": 0,
+        "promptTokens": 6596,
+        "completionTokens": 1001
+      },
+      "llm_ttft_ms": {
+        "samples": 25,
+        "p50": 251,
+        "p95": 371
+      },
+      "model_turn_first_audio_ms": {
+        "samples": 25,
+        "p50": 297.93,
+        "p95": 402.81
+      },
+      "first_audio_ready_ms": {
+        "p50": 0.29,
+        "p95": 312.04,
+        "max": 463.73
+      },
+      "first_audio_over_budget_turns": 0,
+      "filler_first_turns": 0,
+      "eval_pass": {
+        "passed": 100,
+        "total": 100,
+        "rate": 100
+      },
+      "turn_pass": {
+        "passed": 138,
+        "total": 138,
+        "rate": 100
+      },
+      "route_accuracy": {
+        "correct": 101,
+        "total": 101,
+        "rate": 100
+      },
+      "safety_cases": {
+        "passed": 27,
+        "total": 27
+      },
+      "grounded": {
+        "grounded": 25,
+        "model_turns": 25,
+        "rate": 100
+      },
+      "guard_blocked_turns": 0,
+      "wrong_answers_auto": {
+        "count": 0,
+        "of": 25,
+        "rate": 0,
+        "rule": "guard blocked OR fixture expectation failed on a model-answered turn"
+      },
+      "fallback": {
+        "turns": 0,
+        "rate": 0,
+        "small_model_turns": 0,
+        "small_model_rate": 0
+      },
+      "token_cap": {
+        "calls_hit": 0,
+        "rate": 0,
+        "cap": 6000
+      },
+      "tokens": {
+        "per_call_avg": 76,
+        "estimated": false,
+        "note": "provider-reported usage (every model trace has tokens_estimated=false); the harness label said \"estimated\" until commit 089fcde"
+      },
+      "cache": {
+        "hits": 0,
+        "misses": 0,
+        "sets": 0,
+        "errors": 0,
+        "backend": "memory",
+        "hit_rate_of_lookups": null,
+        "hit_rate_of_turns": 0
+      },
+      "route_share": {
+        "rule": 42.8,
+        "tool": 32.6,
+        "retrieval": 18.1,
+        "human": 6.5
+      },
+      "handoff": {
+        "turns": 9,
+        "turn_rate": 6.5,
+        "calls": 9,
+        "call_rate": 9
+      },
+      "tool_validity": {
+        "valid": 223,
+        "total": 223,
+        "rate": 100
+      },
+      "cost_per_call_usd_price_table": 7.95e-06,
+      "cost_per_model_answer_usd_price_table": 3.18e-05
+    },
+    "replay_with_cache": {
+      "generated": "2026-11-24T07:45:26.888Z",
+      "label": "groq-real-cache",
+      "cache_disabled": false,
+      "provider": "groq (LLM_PROVIDER=groq)",
+      "calls": 100,
+      "turns": 138,
+      "llm_requests": {
+        "requests": 5,
+        "http429": 0,
+        "errors": 0,
+        "lastRetryAfterMs": 0,
+        "promptTokens": 1307,
+        "completionTokens": 241
+      },
+      "llm_ttft_ms": {
+        "samples": 5,
+        "p50": 168,
+        "p95": 349
+      },
+      "model_turn_first_audio_ms": {
+        "samples": 25,
+        "p50": 0.2,
+        "p95": 349.22
+      },
+      "first_audio_ready_ms": {
+        "p50": 0.31,
+        "p95": 1.66,
+        "max": 380.78
+      },
+      "first_audio_over_budget_turns": 0,
+      "filler_first_turns": 0,
+      "eval_pass": {
+        "passed": 100,
+        "total": 100,
+        "rate": 100
+      },
+      "turn_pass": {
+        "passed": 138,
+        "total": 138,
+        "rate": 100
+      },
+      "route_accuracy": {
+        "correct": 101,
+        "total": 101,
+        "rate": 100
+      },
+      "safety_cases": {
+        "passed": 27,
+        "total": 27
+      },
+      "grounded": {
+        "grounded": 25,
+        "model_turns": 25,
+        "rate": 100
+      },
+      "guard_blocked_turns": 0,
+      "wrong_answers_auto": {
+        "count": 0,
+        "of": 25,
+        "rate": 0,
+        "rule": "guard blocked OR fixture expectation failed on a model-answered turn"
+      },
+      "fallback": {
+        "turns": 0,
+        "rate": 0,
+        "small_model_turns": 0,
+        "small_model_rate": 0
+      },
+      "token_cap": {
+        "calls_hit": 0,
+        "rate": 0,
+        "cap": 6000
+      },
+      "tokens": {
+        "per_call_avg": 15,
+        "estimated": false,
+        "note": "provider-reported usage (every model trace has tokens_estimated=false); the harness label said \"estimated\" until commit 089fcde"
+      },
+      "cache": {
+        "hits": 20,
+        "misses": 5,
+        "sets": 5,
+        "errors": 0,
+        "backend": "memory",
+        "hit_rate_of_lookups": 80,
+        "hit_rate_of_turns": 14.5
+      },
+      "route_share": {
+        "rule": 42.8,
+        "tool": 32.6,
+        "retrieval": 18.1,
+        "human": 6.5
+      },
+      "handoff": {
+        "turns": 9,
+        "turn_rate": 6.5,
+        "calls": 9,
+        "call_rate": 9
+      },
+      "tool_validity": {
+        "valid": 223,
+        "total": 223,
+        "rate": 100
+      },
+      "cost_per_call_usd_price_table": 1.7032499999999997e-06
+    },
+    "response_agent_probe": {
+      "label": "groq-probe-final",
+      "generated": "2026-11-24T07:43:33.202Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "note": "LLM_PROVIDER=groq",
+      "cases": 30,
+      "errors": 0,
+      "auto_wrong": 0,
+      "guard_blocked": 1,
+      "contradictions": 0,
+      "asserted_without_source": 0,
+      "answerable": 22,
+      "answerable_with_fact": 21,
+      "abstain_cases": 8,
+      "abstained_correctly": 8,
+      "cited": 27,
+      "ttft_ms": {
+        "n": 30,
+        "p50": 209,
+        "p95": 424
+      },
+      "total_ms": {
+        "p50": 231,
+        "p95": 493
+      },
+      "tokens_per_answer": 397,
+      "llm_stats": {
+        "requests": 30,
+        "http429": 0,
+        "errors": 0,
+        "lastRetryAfterMs": 0,
+        "promptTokens": 10079,
+        "completionTokens": 1825
+      },
+      "cost_per_answer_usd_price_table": 4.34475e-05,
+      "ttft_max_ms": 1515
+    },
+    "eval_gate_real": {
+      "cases": 30,
+      "passed": 30,
+      "rate": 100.0,
+      "llm_requests": 2,
+      "http429": 0,
+      "tokens": {
+        "prompt": 516,
+        "completion": 84
+      }
+    }
+  },
+  "pooled_model_ttft_ms": {
+    "n": 55,
+    "p50": 231,
+    "p95": 373,
+    "max": 1515
+  },
+  "wrong_answers": {
+    "definition": "answer the caller would HEAR that contradicts the business config (src/businesses/mm-dental.ts). Auto checks (guard block, fixture expectations, probe must_not / abstain rules) + every answer read by hand.",
+    "final_heard": {
+      "replay_no_cache": "0/25",
+      "probe": "0/30",
+      "total": "0/55"
+    },
+    "final_raw_model_wrong_caught_by_guard": "1/30 probe (Uppingham Tuesday closing given as 5pm; config says 7pm) - blocked by the new hours check, caller hears the safe hand-off line",
+    "before_fixes": {
+      "probe_run_1": "1/30 heard wrong (Saturday: said both practices open 9am-12pm; Upperton is phone lines only)",
+      "probe_run_2": "2/30 heard wrong (Uppingham Tuesday close 5pm; \"the practice is closed right now\" during opening hours) + 1 correct answer wrongly blocked (echoed the caller's \"8pm\")"
+    }
+  },
+  "earlier_runs": {
+    "probe_run_1": {
+      "label": "groq-probe-1",
+      "generated": "2026-11-24T07:36:15.119Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "note": "LLM_PROVIDER=groq",
+      "cases": 30,
+      "errors": 0,
+      "auto_wrong": 0,
+      "guard_blocked": 0,
+      "contradictions": 0,
+      "asserted_without_source": 0,
+      "answerable": 22,
+      "answerable_with_fact": 18,
+      "abstain_cases": 8,
+      "abstained_correctly": 8,
+      "cited": 26,
+      "ttft_ms": {
+        "n": 30,
+        "p50": 167,
+        "p95": 318
+      },
+      "total_ms": {
+        "p50": 197,
+        "p95": 342
+      },
+      "tokens_per_answer": 353,
+      "llm_stats": {
+        "requests": 30,
+        "http429": 0,
+        "errors": 0,
+        "lastRetryAfterMs": 0,
+        "promptTokens": 8901,
+        "completionTokens": 1702
+      }
+    },
+    "probe_run_2": {
+      "label": "groq-probe-2",
+      "generated": "2026-11-24T07:40:08.926Z",
+      "provider": "groq",
+      "model": "openai/gpt-oss-20b",
+      "note": "LLM_PROVIDER=groq",
+      "cases": 30,
+      "errors": 0,
+      "auto_wrong": 1,
+      "guard_blocked": 1,
+      "contradictions": 0,
+      "asserted_without_source": 0,
+      "answerable": 22,
+      "answerable_with_fact": 21,
+      "abstain_cases": 8,
+      "abstained_correctly": 8,
+      "cited": 27,
+      "ttft_ms": {
+        "n": 30,
+        "p50": 222,
+        "p95": 453
+      },
+      "total_ms": {
+        "p50": 269,
+        "p95": 502
+      },
+      "tokens_per_answer": 396,
+      "llm_stats": {
+        "requests": 30,
+        "http429": 0,
+        "errors": 0,
+        "lastRetryAfterMs": 0,
+        "promptTokens": 10018,
+        "completionTokens": 1871
+      }
+    }
+  },
+  "usage_totals": {
+    "remote_requests": 151,
+    "http429": 0,
+    "tokens_total_approx": 52141,
+    "breakdown": "2 smoke + 25 replay(pre-fix) + 2 eval gate(pre-fix) + 30+30+30 probe + 25 replay no-cache + 5 replay with cache + 2 eval gate",
+    "limits": "free plan 30 RPM / 1,000 RPD / 8,000 TPM / 200,000 TPD; this run <=20 RPM paced"
+  },
+  "bill": {
+    "actual_usd": 0,
+    "note": "free plan; the price-table cost is what the same tokens would cost on the paid tier"
+  },
+  "price_table": {
+    "input_per_1m": 0.075,
+    "output_per_1m": 0.3,
+    "as_of": "2026-11-24",
+    "source": "config/llm-prices.json (Groq paid tier; free plan bills $0)"
+  },
+  "probe_answers_final": [
+    {
+      "id": "emerg-fee",
+      "q": "How much is an emergency appointment?",
+      "expect": "answer",
+      "answer": "Same-day emergency appointments cost £50 for the consultation plus £10 for any X-rays, with treatment charged on top.",
+      "citations": [
+        "faq:2"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 241,
+      "total_ms": 277,
+      "tokens": 383
+    },
+    {
+      "id": "xray-extra",
+      "q": "Do X-rays cost extra on an emergency visit?",
+      "expect": "answer",
+      "answer": "Yes, X-rays cost an extra £10 on an emergency visit. The same-day emergency appointment includes a £50 consultation fee.",
+      "citations": [
+        "price:0"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 194,
+      "total_ms": 226,
+      "tokens": 389
+    },
+    {
+      "id": "emerg-treatment",
+      "q": "Is treatment included in the emergency fee?",
+      "expect": "answer",
+      "answer": "Treatment is not included in the emergency fee; it is charged on top.",
+      "citations": [
+        "price:0"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 135,
+      "total_ms": 158,
+      "tokens": 371
+    },
+    {
+      "id": "sat-hours",
+      "q": "What time are you open on Saturday?",
+      "expect": "answer",
+      "answer": "Saturday at Uppingham Road is 9 am–12 pm. At Upperton Road it is 9 am–12 pm but phone lines only, and patients are seen at Uppingham Road.",
+      "citations": [
+        "hours:uppingham-road-practice",
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 214,
+      "total_ms": 389,
+      "tokens": 544
+    },
+    {
+      "id": "sun-open",
+      "q": "Are you open on Sunday?",
+      "expect": "answer",
+      "answer": "We are closed on Sunday at both locations.",
+      "citations": [
+        "hours:uppingham-road-practice",
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 231,
+      "total_ms": 231,
+      "tokens": 484
+    },
+    {
+      "id": "uppingham-tue-close",
+      "q": "What time does the Uppingham Road practice close on Tuesday?",
+      "expect": "answer",
+      "answer": "I don't want to give you the wrong information, so I'll ask the team to confirm that for you.",
+      "citations": [
+        "hours:uppingham-road-practice"
+      ],
+      "guard_blocked": true,
+      "guard_violations": [
+        "hours_mismatch"
+      ],
+      "ttft_ms": 184,
+      "total_ms": 210,
+      "tokens": 480
+    },
+    {
+      "id": "upperton-mon-open",
+      "q": "When does the Upperton Road practice open on Monday?",
+      "expect": "answer",
+      "answer": "The Upperton Road practice opens Monday at 10:30 am and closes at 6 pm.",
+      "citations": [
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 280,
+      "total_ms": 286,
+      "tokens": 483
+    },
+    {
+      "id": "upperton-address",
+      "q": "What's the address of the Upperton Road practice?",
+      "expect": "answer",
+      "answer": "The Upperton Road practice is at 15 Upperton Road, Leicester, LE3 0BH.",
+      "citations": [
+        "location:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 170,
+      "total_ms": 202,
+      "tokens": 432
+    },
+    {
+      "id": "uppingham-phone",
+      "q": "What's the phone number for Uppingham Road?",
+      "expect": "answer",
+      "answer": "The Uppingham Road Practice can be reached at 0116 276 7760.",
+      "citations": [
+        "location:uppingham-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 179,
+      "total_ms": 210,
+      "tokens": 443
+    },
+    {
+      "id": "upperton-phone",
+      "q": "What is the phone number for the Upperton Road practice?",
+      "expect": "answer",
+      "answer": "The Upperton Road practice can be reached at 0116 247 0431.",
+      "citations": [
+        "location:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 135,
+      "total_ms": 181,
+      "tokens": 454
+    },
+    {
+      "id": "where",
+      "q": "Where are you based?",
+      "expect": "answer",
+      "answer": "We are based at 15 Upperton Road, Leicester, LE3 0BH and also at 193 Uppingham Road, Leicester, LE5 4BQ.",
+      "citations": [
+        "location:upperton-road-practice",
+        "location:uppingham-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 297,
+      "total_ms": 352,
+      "tokens": 359
+    },
+    {
+      "id": "since",
+      "q": "How long has the practice been around?",
+      "expect": "answer",
+      "answer": "Our family-run group has been established since 1946.",
+      "citations": [
+        "about"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 83,
+      "total_ms": 100,
+      "tokens": 366
+    },
+    {
+      "id": "membership-cost",
+      "q": "How much do membership plans cost?",
+      "expect": "answer",
+      "answer": "Membership plans start at £13.50 a month.",
+      "citations": [
+        "service:1"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 230,
+      "total_ms": 232,
+      "tokens": 339
+    },
+    {
+      "id": "monthly-plan",
+      "q": "Is there a monthly plan I can join?",
+      "expect": "answer",
+      "answer": "Yes, we offer membership plans starting at £13.50 a month.",
+      "citations": [
+        "faq:1"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 247,
+      "total_ms": 269,
+      "tokens": 342
+    },
+    {
+      "id": "closed-days",
+      "q": "Which day are you closed?",
+      "expect": "answer",
+      "answer": "We are closed on Sundays at both locations.",
+      "citations": [
+        "hours:uppingham-road-practice",
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 257,
+      "total_ms": 415,
+      "tokens": 489
+    },
+    {
+      "id": "late-day",
+      "q": "Are you open late on any weekday evening?",
+      "expect": "answer",
+      "answer": "We're not open past 7 pm on any weekday.",
+      "citations": [
+        "hours:uppingham-road-practice",
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 265,
+      "total_ms": 266,
+      "tokens": 517
+    },
+    {
+      "id": "upperton-sat",
+      "q": "Can I be seen at Upperton Road on a Saturday?",
+      "expect": "answer",
+      "answer": "Saturday patients are seen at Uppingham Road, and Upperton Road is phone lines only.",
+      "citations": [
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 145,
+      "total_ms": 176,
+      "tokens": 481
+    },
+    {
+      "id": "severe-swelling",
+      "q": "If my face is swollen and I can't breathe properly what should I do?",
+      "expect": "answer",
+      "answer": "If you have severe swelling affecting breathing or swallowing, call 999 or go to A&E.",
+      "citations": [
+        "emergency"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 130,
+      "total_ms": 155,
+      "tokens": 394
+    },
+    {
+      "id": "nervous",
+      "q": "I'm really scared of the dentist, can you help?",
+      "expect": "answer",
+      "answer": "I understand how you feel; our team is experienced with nervous patients and will look after you at your pace.",
+      "citations": [
+        "faq:3"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 304,
+      "total_ms": 331,
+      "tokens": 337
+    },
+    {
+      "id": "new-patients",
+      "q": "Can I register as a new patient?",
+      "expect": "answer",
+      "answer": "Yes, new patients are always welcome and registration is offered.",
+      "citations": [
+        "faq:0",
+        "service:3"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 152,
+      "total_ms": 175,
+      "tokens": 297
+    },
+    {
+      "id": "nhs",
+      "q": "Do you take NHS patients?",
+      "expect": "abstain",
+      "answer": "I'm not sure about NHS patients; I'll ask the team to confirm.",
+      "citations": [
+        "faq:0"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 176,
+      "total_ms": 199,
+      "tokens": 349
+    },
+    {
+      "id": "filling-price",
+      "q": "How much is a filling?",
+      "expect": "abstain",
+      "answer": "I will ask the team to confirm.",
+      "citations": [],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 209,
+      "total_ms": 218,
+      "tokens": 233
+    },
+    {
+      "id": "whitening",
+      "q": "Do you do teeth whitening?",
+      "expect": "abstain",
+      "answer": "I will ask the team to confirm.",
+      "citations": [],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 319,
+      "total_ms": 333,
+      "tokens": 238
+    },
+    {
+      "id": "fri-8pm",
+      "q": "Can I come in at 8pm on Friday?",
+      "expect": "answer",
+      "answer": "I'm sorry, but neither practice is open at 8 pm on Friday – Uppingham Road is open 9 am–5 pm and Upperton Road is open 9 am–5 pm on Fridays.",
+      "citations": [
+        "hours:uppingham-road-practice",
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 424,
+      "total_ms": 493,
+      "tokens": 493
+    },
+    {
+      "id": "parking",
+      "q": "Is there parking at the practice?",
+      "expect": "abstain",
+      "answer": "I'm not sure about parking, I'll ask the team to confirm.",
+      "citations": [
+        "after-hours"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 1515,
+      "total_ms": 1542,
+      "tokens": 387
+    },
+    {
+      "id": "email",
+      "q": "What's your email address?",
+      "expect": "abstain",
+      "answer": "I'm sorry, I don't have that information on hand. I'll ask the team to confirm and get back to you.",
+      "citations": [],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 280,
+      "total_ms": 310,
+      "tokens": 342
+    },
+    {
+      "id": "card",
+      "q": "Can I pay by credit card?",
+      "expect": "abstain",
+      "answer": "I'm not sure if credit cards are accepted; I'll ask the team to confirm.",
+      "citations": [
+        "faq:1"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 153,
+      "total_ms": 184,
+      "tokens": 338
+    },
+    {
+      "id": "checkup-price",
+      "q": "How much does a check-up cost?",
+      "expect": "abstain",
+      "answer": "I'm not sure about the cost; I'll ask the team to confirm.",
+      "citations": [
+        "faq:0"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 347,
+      "total_ms": 348,
+      "tokens": 282
+    },
+    {
+      "id": "urdu",
+      "q": "Do any of your dentists speak Urdu?",
+      "expect": "abstain",
+      "answer": "I'm not sure if any of our dentists speak Urdu; I'll ask the team to confirm.",
+      "citations": [
+        "faq:3"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 164,
+      "total_ms": 263,
+      "tokens": 335
+    },
+    {
+      "id": "thu-open",
+      "q": "What time do you open on Thursday?",
+      "expect": "answer",
+      "answer": "Uppingham Road opens at 9 am on Thursday. Upperton Road opens at 9 am on Thursday.",
+      "citations": [
+        "hours:uppingham-road-practice",
+        "hours:upperton-road-practice"
+      ],
+      "guard_blocked": false,
+      "guard_violations": [],
+      "ttft_ms": 151,
+      "total_ms": 195,
+      "tokens": 523
+    }
+  ],
+  "replay_model_answers_distinct": [
+    "We offer pay as you go or membership plans starting at £13.50 a month.",
+    "We offer pay-as-you-go or membership plans starting at £13.50 a month.",
+    "Yes, new patients are always welcome.",
+    "Yes, you can pay monthly with our membership plans starting at £13.50 a month."
+  ]
+}
