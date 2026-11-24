@@ -215,11 +215,11 @@ const summary = {
   cache: { ...cache, hit_rate_of_lookups: pct(cache.hits, cache.hits + cache.misses), hit_rate_of_turns: pct(rows.filter((r) => r.trace.cache_hit).length, turns) },
   fallback: { turns: rows.filter((r) => r.trace.fallback).length, rate: pct(rows.filter((r) => r.trace.fallback).length, turns), small_model_turns: rows.filter((r) => r.trace.fallback?.step === 'smaller_model').length, small_model_rate: pct(rows.filter((r) => r.trace.fallback?.step === 'smaller_model').length, turns) },
   token_cap: { calls_hit: ledger.filter((l) => l.capHits > 0).length, rate: pct(ledger.filter((l) => l.capHits > 0).length, calls.length), cap: config.maxTokensPerCall },
-  tokens: { per_call_avg: Math.round(ledger.reduce((a, l) => a + l.tokens, 0) / Math.max(1, ledger.length)), estimated: true },
+  tokens: { per_call_avg: Math.round(ledger.reduce((a, l) => a + l.tokens, 0) / Math.max(1, ledger.length)), estimated: rows.some((r) => r.trace.tokens_estimated === true) || !remote },
   cost: {
     per_call_usd: priced.length ? priced.reduce((a, l) => a + l.cost, 0) / priced.length : null,
     note: `estimate from the dated price table (as_of ${agent.prices.as_of}) for ${agent.llm.primaryModel}/${agent.llm.smallModel}; free-plan usage is billed $0`,
-    projection: { model: proj ?? null, per_call_usd: projPerCall, note: 'PROJECTION only: mock token estimates priced at the projection model paid rate; not a measurement' },
+    projection: { model: proj ?? null, per_call_usd: projPerCall, note: remote ? 'PROJECTION: provider-reported tokens from this run priced at the projection model paid rate; the free plan bills $0' : 'PROJECTION only: mock token estimates priced at the projection model paid rate; not a measurement' },
   },
 }
 
@@ -269,7 +269,7 @@ const md = [
     ['Cache hit rate (of lookups / of all turns)', `${S.cache.hit_rate_of_lookups}% / ${S.cache.hit_rate_of_turns}% (${S.cache.hits} hits, ${S.cache.misses} misses, ${S.cache.backend})`],
     ['Fallback turns / small-model fallback', `${S.fallback.rate}% / ${S.fallback.small_model_rate}%`],
     ['Calls hitting token cap', `${S.token_cap.calls_hit}/${S.calls} = ${S.token_cap.rate}% (cap ${S.token_cap.cap})`],
-    ['Tokens per call (estimated)', String(S.tokens.per_call_avg)],
+    [`Tokens per call (${S.tokens.estimated ? 'estimated' : 'provider-reported usage'})`, String(S.tokens.per_call_avg)],
     ['Cost per call (price table)', S.cost.per_call_usd == null ? 'n/a' : `$${S.cost.per_call_usd.toFixed(6)}`],
     [`Cost per call PROJECTION (${S.cost.projection.model})`, `$${S.cost.projection.per_call_usd.toFixed(6)} - estimate, not measured`],
     ['Guard blocked / engine guard warnings / replies over length cap', `${S.guard_blocked_turns} / ${S.engine_guard_warnings} / ${S.length_warnings}`],
