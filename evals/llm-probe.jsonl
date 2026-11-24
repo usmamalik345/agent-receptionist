@@ -1,0 +1,30 @@
+{"id":"emerg-fee","q":"How much is an emergency appointment?","expect":"answer","must":["£50"]}
+{"id":"xray-extra","q":"Do X-rays cost extra on an emergency visit?","expect":"answer","must":["£10"]}
+{"id":"emerg-treatment","q":"Is treatment included in the emergency fee?","expect":"answer","must":["(charged|on top|extra|separate|not included)"],"must_not":["\\bis included\\b"]}
+{"id":"sat-hours","q":"What time are you open on Saturday?","expect":"answer","must":["9","12"]}
+{"id":"sun-open","q":"Are you open on Sunday?","expect":"answer","must":["closed"],"must_not":["\\bwe are open on sunday\\b"]}
+{"id":"uppingham-tue-close","q":"What time does the Uppingham Road practice close on Tuesday?","expect":"answer","must":["7"]}
+{"id":"upperton-mon-open","q":"When does the Upperton Road practice open on Monday?","expect":"answer","must":["10:30"]}
+{"id":"upperton-address","q":"What's the address of the Upperton Road practice?","expect":"answer","must":["15 Upperton Road"]}
+{"id":"uppingham-phone","q":"What's the phone number for Uppingham Road?","expect":"answer","must":["0116 ?276 ?7760"]}
+{"id":"upperton-phone","q":"What is the phone number for the Upperton Road practice?","expect":"answer","must":["0116 ?247 ?0431"]}
+{"id":"where","q":"Where are you based?","expect":"answer","must":["Leicester"]}
+{"id":"since","q":"How long has the practice been around?","expect":"answer","must":["1946"]}
+{"id":"membership-cost","q":"How much do membership plans cost?","expect":"answer","must":["£13\\.50"]}
+{"id":"monthly-plan","q":"Is there a monthly plan I can join?","expect":"answer","must":["£13\\.50|membership"]}
+{"id":"closed-days","q":"Which day are you closed?","expect":"answer","must":["Sunday"]}
+{"id":"late-day","q":"Are you open late on any weekday evening?","expect":"answer","must":["7"]}
+{"id":"upperton-sat","q":"Can I be seen at Upperton Road on a Saturday?","expect":"answer","must":["phone"],"must_not":["\\byes,? you can be seen at upperton\\b"]}
+{"id":"severe-swelling","q":"If my face is swollen and I can't breathe properly what should I do?","expect":"answer","must":["999|A&E"]}
+{"id":"nervous","q":"I'm really scared of the dentist, can you help?","expect":"answer","must":["nervous|pace|understand|look after"]}
+{"id":"new-patients","q":"Can I register as a new patient?","expect":"answer","must":["welcome|yes"]}
+{"id":"nhs","q":"Do you take NHS patients?","expect":"abstain","must_not":["\\byes\\b"]}
+{"id":"filling-price","q":"How much is a filling?","expect":"abstain"}
+{"id":"whitening","q":"Do you do teeth whitening?","expect":"abstain","must_not":["^\\s*yes\\b"]}
+{"id":"fri-8pm","q":"Can I come in at 8pm on Friday?","expect":"answer","must_not":["^\\s*yes\\b","\\bopen (until|till) 8"]}
+{"id":"parking","q":"Is there parking at the practice?","expect":"abstain","must_not":["^\\s*yes\\b"]}
+{"id":"email","q":"What's your email address?","expect":"abstain"}
+{"id":"card","q":"Can I pay by credit card?","expect":"abstain","must_not":["^\\s*yes\\b"]}
+{"id":"checkup-price","q":"How much does a check-up cost?","expect":"abstain"}
+{"id":"urdu","q":"Do any of your dentists speak Urdu?","expect":"abstain","must_not":["^\\s*yes\\b"]}
+{"id":"thu-open","q":"What time do you open on Thursday?","expect":"answer","must":["9"]}
