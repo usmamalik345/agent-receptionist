@@ -177,7 +177,7 @@ The confidences are fixed heuristics per triage path, not a trained model. Every
 - On the server endpoint `POST /api/agent/start` -> `POST /api/agent/turn {callId, text}` it can enforce hand-off with `ROUTER_ENFORCE=1`.
 
 ### Latency budget, token cap, fallback ladder (`server/latency.ts`)
-Settings: `LATENCY_BUDGET_FIRST_AUDIO_MS` (800), `LATENCY_HEADROOM_MS` (150), `MAX_TOKENS_PER_CALL` (6000), `LLM_PRIMARY_MODEL`, `LLM_FALLBACK_MODEL`, `FALLBACK_TIMEOUT_MS`, `ANSWER_CACHE_TTL_MS`, `POLICY_VERSION`.
+Settings: `LATENCY_BUDGET_FIRST_AUDIO_MS` (800), `LATENCY_HEADROOM_MS` (150), `MAX_TOKENS_PER_CALL` (2500, from real Groq data: 304 tokens per model answer on average, 544 max), `TOKEN_RESERVE_PER_ANSWER` (550), `CALLER_SILENCE_MS` (7000, design default: re-prompt, then hand-off), `LLM_PRIMARY_MODEL`, `LLM_FALLBACK_MODEL`, `FALLBACK_TIMEOUT_MS`, `ANSWER_CACHE_TTL_MS`, `POLICY_VERSION`.
 
 If the primary responder misses `budget - headroom`, or errors, the ladder runs:
 - (a) cached answer (normalized question + business + policy version, TTL),

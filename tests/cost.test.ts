@@ -29,7 +29,7 @@ test('ledger: per-call tokens, cost, cap hits, small-model turns', () => {
 test('runtime records tokens + cost per turn; token cap -> small model then human', async () => {
   const agent = new AgentRuntime({
     stdout: false, traceSink: () => {}, decisionSink: () => {}, multiAgent: true,
-    config: loadLatencyConfig({ MAX_TOKENS_PER_CALL: '150' }),
+    config: loadLatencyConfig({ MAX_TOKENS_PER_CALL: '150', TOKEN_RESERVE_PER_ANSWER: '0' }),
   })
   const { callId } = agent.start({ business: 'mm-dental', source: 'eval' })
   const a = await agent.turn(callId, 'What payment options do you have?')

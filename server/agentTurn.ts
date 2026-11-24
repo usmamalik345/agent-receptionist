@@ -21,7 +21,7 @@ import { buildPassages, retrieve, type RetrievalResult } from './agents/retrieva
 import { assessRisk } from './agents/triage.ts'
 import { createResponseCache, type ResponseCache } from './cache.ts'
 import { CallLedger, loadPriceTable, turnCostUsd, type PriceTable } from './cost.ts'
-import { FILLER_TEXT, loadLatencyConfig, respondWithinBudget, TokenBudget, type LadderResult, type LatencyConfig, type Responder } from './latency.ts'
+import { FILLER_TEXT, loadLatencyConfig, SilenceMonitor, type SilenceAction, respondWithinBudget, TokenBudget, type LadderResult, type LatencyConfig, type Responder } from './latency.ts'
 import { loadLlmClient, type LlmClient } from './llm.ts'
 import { buildRetrievalCorpus, ClarificationTracker, HANDOFF_TEXT, isFailedClarification, routeTurn, type RouterDecision } from './router.ts'
 import { localTicketTool, runTool, validateToolCall, type ToolFn, type ToolRunResult } from './tools.ts'
@@ -125,6 +125,7 @@ export class AgentRuntime {
   readonly ledger = new CallLedger()
   readonly multiAgent: boolean
   readonly clarifications = new ClarificationTracker()
+  readonly silenceMonitor: SilenceMonitor
   private readonly sessions = new Map<string, AgentSession>()
   private readonly opts: AgentRuntimeOptions
 
@@ -136,6 +137,24 @@ export class AgentRuntime {
     this.llm = opts.llm ?? loadLlmClient()
     this.prices = opts.prices ?? loadPriceTable()
     this.multiAgent = opts.multiAgent ?? process.env.MULTI_AGENT !== '0'
+    this.silenceMonitor = new SilenceMonitor(this.config.callerSilenceMs)
+  }
+
+  /**
+   * Caller-silence budget (CALLER_SILENCE_MS). The transport calls this with the ms since our last audio
+   * ended and no caller speech. First breach -> re-prompt; second consecutive breach -> hand-off.
+   */
+  silence(callId: string, silentMs: number): SilenceAction {
+    const s = this.sessions.get(callId)
+    if (!s) throw new Error(`unknown call ${callId}`)
+    const a = this.silenceMonitor.check(callId, silentMs)
+    if (a.action !== 'wait') {
+      const tb = s.trace.startTurn({ step_before: s.step })
+      if (a.action === 'handoff') s.step = 'escalated'
+      tb.set({ route: a.action === 'handoff' ? 'human' : 'rule', outcome: a.action === 'handoff' ? 'transferred' : null, handoff: a.action === 'handoff', step_after: s.step, reply_chars: a.text.length, model: 'none', silence_ms: silentMs, agent_path: 'engine' } as never)
+      tb.end()
+    }
+    return a
   }
 
   start(input: { callId?: string; business?: string; afterHours?: boolean; source?: TraceSource; channel?: string } = {}) {
@@ -181,6 +200,7 @@ export class AgentRuntime {
     const biz = resolveBusiness(s.business)
     setActiveBusiness(biz)
     s.callerTexts.push(text)
+    this.silenceMonitor.reset(callId)
     const stepBefore = s.step
     const sttMs = extra.sttMs ?? 0
     const gate = new FirstAudioGate(this.config.budgetMs - this.config.headroomMs - sttMs, extra.onFirstAudio)

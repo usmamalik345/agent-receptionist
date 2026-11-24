@@ -40,10 +40,12 @@ const deps = (primary: Responder, fallback: Responder, tokens = new TokenBudget(
   tokens,
 })
 
-test('defaults: 800 ms budget, 6000 token cap', () => {
+test('defaults: 800 ms budget, 2500 token cap (from real Groq data), 7000 ms caller silence', () => {
   const d = loadLatencyConfig({})
   assert.equal(d.budgetMs, 800)
-  assert.equal(d.maxTokensPerCall, 6000)
+  assert.equal(d.maxTokensPerCall, 2500)
+  assert.equal(d.tokenReservePerAnswer, 550)
+  assert.equal(d.callerSilenceMs, 7000)
 })
 
 test('slow primary -> smaller model, filler first audio inside budget', async () => {

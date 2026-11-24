@@ -22,6 +22,10 @@ export interface LatencyConfig {
   fallbackModel: string
   cacheTtlMs: number
   policyVersion: string
+  /** Tokens reserved per model answer in the pre-flight cap check (real Groq max per answer: 544, 24 Nov 2026) */
+  tokenReservePerAnswer: number
+  /** Caller silence (ms after our last audio) before we re-prompt; a second miss hands off */
+  callerSilenceMs: number
 }
 
 const int = (v: string | undefined, d: number): number => {
@@ -34,7 +38,12 @@ export function loadLatencyConfig(env: Record<string, string | undefined> = proc
   return {
     budgetMs: int(env.LATENCY_BUDGET_FIRST_AUDIO_MS, 800),
     headroomMs: int(env.LATENCY_HEADROOM_MS, 150),
-    maxTokensPerCall: int(env.MAX_TOKENS_PER_CALL, 6000),
+    // 2500 = real data: gpt-oss-20b on Groq used 304 tokens per model answer on average and 544 at most
+    // (replay n=25, probe n=90, 24 Nov 2026), so 2500 allows >= 4 worst-case / ~8 typical model answers per call.
+    maxTokensPerCall: int(env.MAX_TOKENS_PER_CALL, 2500),
+    tokenReservePerAnswer: int(env.TOKEN_RESERVE_PER_ANSWER, 550),
+    // Design default, not measured: 7 s of caller silence -> "Are you still there?"; second time -> hand-off.
+    callerSilenceMs: int(env.CALLER_SILENCE_MS, 7000),
     fallbackTimeoutMs: int(env.FALLBACK_TIMEOUT_MS, 1500),
     primaryModel: env.LLM_PRIMARY_MODEL || 'rule-engine',
     fallbackModel: env.LLM_FALLBACK_MODEL || 'rule-engine',
@@ -44,6 +53,29 @@ export function loadLatencyConfig(env: Record<string, string | undefined> = proc
 }
 
 export const FILLER_TEXT = 'One moment, please.'
+export const SILENCE_REPROMPT_TEXT = "Are you still there? Take your time."
+export const SILENCE_HANDOFF_TEXT = "I can't hear anything, so I'll ask the team to call you back. Thanks for calling."
+
+export type SilenceAction = { action: 'wait' } | { action: 'reprompt'; text: string } | { action: 'handoff'; text: string }
+
+/** Caller-silence budget: under budget -> wait; first breach -> re-prompt; second consecutive breach -> hand-off. */
+export class SilenceMonitor {
+  private misses = new Map<string, number>()
+  private readonly budgetMs: number
+  constructor(budgetMs: number) {
+    this.budgetMs = budgetMs
+  }
+  check(callId: string, silentMs: number): SilenceAction {
+    if (silentMs < this.budgetMs) return { action: 'wait' }
+    const n = (this.misses.get(callId) ?? 0) + 1
+    this.misses.set(callId, n)
+    return n >= 2 ? { action: 'handoff', text: SILENCE_HANDOFF_TEXT } : { action: 'reprompt', text: SILENCE_REPROMPT_TEXT }
+  }
+  /** The caller spoke: reset the count */
+  reset(callId: string): void {
+    this.misses.delete(callId)
+  }
+}
 export const HANDOFF_AFTER_FILLER =
   "I'm going to pass you to a member of the team so you're not kept waiting. They'll be with you shortly."
 
@@ -213,7 +245,7 @@ export async function respondWithinBudget(callId: string, business: string, text
   }
 
   // Token cap
-  if (tokens.wouldExceed(callId, estimateTokens(text))) {
+  if (tokens.wouldExceed(callId, estimateTokens(text) + (config.tokenReservePerAnswer ?? 0))) {
     tokenCapHit = true
     if (tokens.hit(callId) >= 2) return handoff('token_cap')
     const fb = await raceTimeout(deps.fallback, { text, shortContext: true }, config.fallbackTimeoutMs)
