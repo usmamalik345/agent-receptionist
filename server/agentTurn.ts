@@ -15,6 +15,7 @@ import { setActiveBusiness } from '../src/lib/businessRuntime.ts'
 import { greet, processGuestMessage } from '../src/lib/stateMachine.ts'
 import { emptyBooking, type BookingFields, type ConversationStep, type Language } from '../src/lib/types.ts'
 import { guardReply, SAFE_LINE, type GuardResult } from './agents/guard.ts'
+import { answerHoursQuestion } from './agents/hoursTool.ts'
 import { runResponseAgent } from './agents/response.ts'
 import { buildPassages, retrieve, type RetrievalResult } from './agents/retrieval.ts'
 import { assessRisk } from './agents/triage.ts'
@@ -286,13 +287,16 @@ export class AgentRuntime {
     }
     let lastCitations: string[] = []
     let lastEstimated = false
+    let lastTool: 'get_hours' | null = null
     const agentsActive = useAgents && retrieval !== null && retrieval.grounded
     const agentResponder = (tier: 'primary' | 'small'): Responder => ({
       name: `response-agent:${tier}`,
       respond: async ({ text: t, shortContext, signal }) => {
-        const out = await runResponseAgent(this.llm, { business: biz.name, question: t, passages: retrieval!.passages, tier, shortContext, signal })
+        const out = await runResponseAgent(this.llm, { business: biz.name, question: t, passages: retrieval!.passages, tier, shortContext, signal, hours: biz.locations })
         lastCitations = out.citations
         lastEstimated = out.usage.estimated
+        lastTool = out.tool ?? null
+        if (out.tool) return { text: out.text, ttftMs: out.ttftMs, model: out.model, payload: engineReplyNow }
         return { text: out.text, tokens: { prompt: out.usage.prompt, completion: out.usage.completion }, ttftMs: out.ttftMs, model: out.model, payload: engineReplyNow }
       },
     })
@@ -326,6 +330,16 @@ export class AgentRuntime {
     let reply = (ladder.payload as EngineReply | undefined) ?? null
     if (!reply && ladder.step === 'cache' && engineReplyNow) reply = engineReplyNow
     let text_ = ladder.text
+    // Rule-engine hours reply reads the whole week; when the caller named a day or one practice,
+    // answer just that from config with the get_hours tool (same data, shorter, more natural on a call).
+    if (decision.route === 'rule' && reply?.intent === 'hours' && !ladder.fallback) {
+      const h = answerHoursQuestion(biz.locations, text)
+      if (h && (h.days.length > 0 || h.locations.length < biz.locations.length)) {
+        text_ = h.text
+        lastTool = 'get_hours'
+        lastCitations = h.citations
+      }
+    }
     let handoff = ladder.handoff || reply?.escalate === true
     let outcome = reply ? (reply.outcome ?? null) : ladder.handoff ? 'transferred' : null
     const toolResults: Array<{ tool: string; ok: boolean; result?: string }> = []
@@ -333,6 +347,7 @@ export class AgentRuntime {
       const bad = validateToolCall(t.tool, t.args ?? {})
       toolResults.push({ tool: t.tool, ok: bad === null, result: bad ? `schema_error: ${bad}` : String(t.result).slice(0, 80) })
     }
+    if (lastTool) toolResults.push({ tool: lastTool, ok: true, result: lastCitations.join(',') })
     if (reply?.createTicket && !ladder.handoff) {
       const args = { ...reply.createTicket } as Record<string, unknown>
       const bad = validateToolCall('create_ticket', args)
@@ -356,7 +371,8 @@ export class AgentRuntime {
 
     // 6) Guard before TTS
     const fromModel = agentsActive && (ladder.step === 'primary' || ladder.step === 'smaller_model' || ladder.step === 'cache')
-    const cited = retrieval?.passages.filter((p) => lastCitations.includes(p.id)) ?? []
+    // get_hours answers come from config: ground them in the full hours passages, not just the retrieved ones
+    const cited = lastTool ? buildPassages(biz).filter((p) => lastCitations.includes(p.id)) : (retrieval?.passages.filter((p) => lastCitations.includes(p.id)) ?? [])
     const guard = guardReply({
       text: text_,
       source: fromModel ? 'llm' : 'engine',

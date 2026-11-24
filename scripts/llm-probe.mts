@@ -14,7 +14,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { mmDentalBusiness } from '../src/businesses/mm-dental.ts'
-import { retrieve } from '../server/agents/retrieval.ts'
+import { buildPassages, retrieve } from '../server/agents/retrieval.ts'
 import { runResponseAgent } from '../server/agents/response.ts'
 import { guardReply } from '../server/agents/guard.ts'
 import { loadLlmClient, type RemoteLlmClient } from '../server/llm.ts'
@@ -49,19 +49,21 @@ for (const [i, c] of cases.entries()) {
   let ttft = 0
   let error: string | null = null
   let tokens = 0
+  let toolUsed = false
   try {
-    const out = await runResponseAgent(llm, { business: mmDentalBusiness.name, question: c.q, passages: r.passages })
+    const out = await runResponseAgent(llm, { business: mmDentalBusiness.name, question: c.q, passages: r.passages, hours: process.env.PROBE_NO_HOURS_TOOL === '1' ? undefined : mmDentalBusiness.locations })
     text = out.text
     raw = out.rawText
     citations = out.citations
     ttft = out.ttftMs
     tokens = out.usage.prompt + out.usage.completion
+    toolUsed = out.tool === 'get_hours'
   } catch (e) {
     error = e instanceof Error ? e.message.slice(0, 200) : String(e)
     if (remote && /429/.test(error)) await sleep(Math.max(remote.stats().lastRetryAfterMs, 10_000))
   }
   const totalMs = Math.round(performance.now() - t0)
-  const cited = r.passages.filter((p) => citations.includes(p.id))
+  const cited = (toolUsed ? buildPassages(mmDentalBusiness) : r.passages).filter((p) => citations.includes(p.id))
   const g = guardReply({ text, source: 'llm', grounding: (cited.length ? cited : r.passages).map((p) => p.text), allowedContacts: mmDentalBusiness.locations.map((l) => l.phone), hours: mmDentalBusiness.locations, callerText: c.q })
   const spoken = g.blocked ? g.text : text
   const missing = (c.must ?? []).filter((m) => !new RegExp(m, 'i').test(spoken))
@@ -70,7 +72,7 @@ for (const [i, c] of cases.entries()) {
   const assertedWithoutSource = c.expect === 'abstain' && !abstained
   rows.push({
     id: c.id, q: c.q, expect: c.expect, answer: spoken, raw_model: raw, error, citations, top_passage: r.passages[0]?.id ?? null,
-    guard_blocked: g.blocked, guard_violations: g.violations.map((v) => v.kind), ttft_ms: ttft, total_ms: totalMs, tokens,
+    tool: toolUsed ? 'get_hours' : null, guard_blocked: g.blocked, guard_violations: g.violations.map((v) => v.kind), ttft_ms: ttft, total_ms: totalMs, tokens,
     missing_fact: missing, contradicts, abstained, asserted_without_source: assertedWithoutSource,
     // wrong = a contradiction the caller would HEAR; a guard block is counted separately (caller hears the safe line)
     auto_wrong: !error && !g.blocked && (contradicts.length > 0 || assertedWithoutSource),

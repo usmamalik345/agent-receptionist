@@ -5,6 +5,7 @@
  */
 import type { LlmClient, LlmUsage } from '../llm.ts'
 import type { ScoredPassage } from './retrieval.ts'
+import { answerHoursQuestion, type HoursLocation } from './hoursTool.ts'
 
 export const RESPONSE_SYSTEM_PROMPT = [
   'You are the phone receptionist for {business}.',
@@ -23,6 +24,8 @@ export interface ResponseAgentOutput {
   usage: LlmUsage
   model: string
   ttftMs: number
+  /** Set when a config tool answered instead of the model (e.g. get_hours) */
+  tool?: 'get_hours'
 }
 
 export function buildResponseMessages(business: string, question: string, passages: ScoredPassage[], shortContext = false) {
@@ -64,8 +67,28 @@ export function extractCitations(text: string, allowed: Set<string>): { spoken: 
 
 export async function runResponseAgent(
   llm: LlmClient,
-  input: { business: string; question: string; passages: ScoredPassage[]; tier?: 'primary' | 'small'; shortContext?: boolean; maxTokens?: number; signal?: AbortSignal },
+  input: {
+    business: string
+    question: string
+    passages: ScoredPassage[]
+    tier?: 'primary' | 'small'
+    shortContext?: boolean
+    maxTokens?: number
+    signal?: AbortSignal
+    /** When given, opening-hours questions are answered by the get_hours tool from config (no model call). */
+    hours?: HoursLocation[]
+  },
 ): Promise<ResponseAgentOutput> {
+  if (input.hours) {
+    const t0 = performance.now()
+    const h = answerHoursQuestion(input.hours, input.question)
+    if (h) {
+      return {
+        text: h.text, rawText: h.text, citations: h.citations, usage: { prompt: 0, completion: 0, estimated: false },
+        model: 'tool:get_hours', ttftMs: Math.round((performance.now() - t0) * 100) / 100, tool: 'get_hours',
+      }
+    }
+  }
   const res = await llm.complete({
     messages: buildResponseMessages(input.business, input.question, input.passages, input.shortContext),
     tier: input.tier ?? 'primary',
