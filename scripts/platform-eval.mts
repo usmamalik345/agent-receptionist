@@ -25,7 +25,8 @@ const NOW = () => new Date('2026-11-25T09:00:00Z')
 
 type Expect = { agent?: string; intent?: string; tools?: string[]; must?: string[]; must_not?: string[]; booking?: boolean; pending?: boolean; escalated?: boolean }
 type Case = { id: string; tenant: string; vertical: string; category: string; fail_tool?: string; turns: Array<{ say: string; expect: Expect }> }
-const cases = readFileSync(path.join(ROOT, 'evals', 'platform.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l) as Case).slice(0, limit)
+const only = arg('category')?.split(',')
+const cases = readFileSync(path.join(ROOT, 'evals', 'platform.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l) as Case).filter((c) => !only || only.includes(c.category)).slice(0, limit)
 const { tenants } = loadTenants()
 const llm = useEnv ? loadLlmClient({ LLM_MAX_REQUESTS: '60', ...process.env }) : createMockClient()
 if (useEnv && llm.provider === 'mock') throw new Error('--provider=env but the client is mock (no key?)')
@@ -55,6 +56,8 @@ const pct = (xs: number[], p: number) => {
 const results: Array<{ id: string; category: string; vertical: string; ok: boolean; failures: string[] }> = []
 const agentStats = new Map<string, { expected: number; routedOk: number; ms: number[]; toolCalls: number; toolOk: number; tokens: number }>()
 const st = (a: string) => agentStats.get(a) ?? (agentStats.set(a, { expected: 0, routedOk: 0, ms: [], toolCalls: 0, toolOk: 0, tokens: 0 }), agentStats.get(a)!)
+const blocked: Array<{ id: string; turn: number; violations: string[]; cross_tenant: string[] }> = []
+const ttfts: number[] = []
 let turns = 0, turnsOk = 0, guardBlocks = 0, crossTenantBlocks = 0, writesWithoutConfirm = 0, modelTurns = 0
 const t0 = Date.now()
 for (const c of cases) {
@@ -72,7 +75,8 @@ for (const c of cases) {
     turns++
     if (!f.length) turnsOk++
     else failures.push(`t${i + 1} "${turn.say}": ${f.join('; ')} -> "${r.text.slice(0, 120)}"`)
-    if (r.guard.blocked) guardBlocks++
+    if (r.guard.blocked) { guardBlocks++; blocked.push({ id: c.id, turn: i + 1, violations: r.guard.violations, cross_tenant: r.guard.crossTenant }) }
+    if (typeof r.trace.llm_ttft_ms === 'number' && r.tokens) ttfts.push(r.trace.llm_ttft_ms)
     if (r.guard.crossTenant.length) crossTenantBlocks++
     if (turn.expect.agent) { const s = st(turn.expect.agent); s.expected++; if (r.agent === turn.expect.agent) s.routedOk++ }
     for (const sp of r.trace.spans) if (sp.name.startsWith('agent:')) { const s = st(sp.name.slice(6)); s.ms.push(sp.duration_ms); if (sp.attrs?.tokens && typeof sp.attrs.tokens === 'object') { const tk = sp.attrs.tokens as { prompt: number; completion: number }; s.tokens += tk.prompt + tk.completion } }
@@ -92,7 +96,7 @@ const agents = [...agentStats.entries()].map(([agent, s]) => ({
 const summary = {
   date: new Date().toISOString(), provider: llm.provider, model: llm.primaryModel, tenants: tenants.size, cases: results.length, passed, pass_rate: passed / results.length,
   turns, turns_ok: turnsOk, hotel: byVert('hotel'), dental: byVert('dental'), safety_failures: safetyFails.length, guard_blocks: guardBlocks,
-  cross_tenant_blocks: crossTenantBlocks, writes_without_confirmation: writesWithoutConfirm, model_turns: modelTurns, wall_ms: Date.now() - t0,
+  cross_tenant_blocks: crossTenantBlocks, writes_without_confirmation: writesWithoutConfirm, model_turns: modelTurns, llm_ttft_p50_ms: pct(ttfts, 50), llm_ttft_p95_ms: pct(ttfts, 95), blocked_turns: blocked, wall_ms: Date.now() - t0,
   by_category: Object.fromEntries(byCat), agents,
 }
 mkdirSync(path.join(ROOT, 'metrics'), { recursive: true })
