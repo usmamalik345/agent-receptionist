@@ -258,6 +258,15 @@ npm run replay -- --write-baseline   # refresh evals/replay/baseline.decisions.j
 Reported values: eval pass, route accuracy, safety cases, grounded rate, tool validity, server first-audio-ready p50/p95, per-stage p50/p95, route share, hand-off rate, cache hit rate, fallback / small-model %, token-cap %, tokens and cost per call. A cost projection at a paid rate is shown separately and labelled as a projection.
 **What these numbers are:** wall-clock on the machine for the server pipeline only, using the mock provider and synthetic calls. They are **not** real TTFA: STT, real LLM TTFT, TTS and network are not included. Record real calls (see above) for those.
 
+### Optional: real-LLM run (opt-in, never in CI)
+The key goes in the process env only (never in `.env` or git). CI keeps `LLM_PROVIDER=mock` and needs no key.
+```bash
+LLM_PROVIDER=groq LLM_API_KEY=... npx tsx scripts/replay-harness.mts --provider=env [--no-cache] [--limit=N] [--pace-ms=3100]
+LLM_PROVIDER=groq LLM_API_KEY=... npx tsx scripts/llm-probe.mts --label=groq   # 30 config-derived questions straight to the response agent
+LLM_PROVIDER=groq LLM_API_KEY=... LLM_MAX_REQUESTS=40 npm run eval:gate
+```
+Pacing stays at or below 20 requests/min, and a 429 is honoured with its retry-after. `LLM_MAX_REQUESTS` caps the run (the harness default is 150). Other knobs: `LLM_STREAM` (default on, gives real TTFT), `LLM_REASONING_EFFORT` (default `low` for gpt-oss), `LLM_MIN_COMPLETION_TOKENS` (default 400, so hidden reasoning cannot starve the answer). Results from 24 Nov 2026 (Groq gpt-oss-20b, free plan, synthetic text, from a cloud box) are in `evals/reports/groq-real-2026-11-24.md`.
+
 ### Failure taxonomy, decision diff
 - `npm run report:failures` reads `logs/traces.jsonl` and the latest replay outputs. It builds categories automatically (`scripts/taxonomy.mts`: span errors/timeouts, tool errors/misuse, fallbacks, hand-offs, low confidence, failed clarifications, ungrounded answers, PII, long replies, token cap, latency, wrong route, missed hand-off) and lists, for each category, the replay test that must keep passing (`evals/taxonomy.json` -> `tests/replay-taxonomy.test.ts`). `--require-coverage` fails if a category has no test.
 - `npm run replay:diff [-- old.jsonl new.jsonl] [--fail-on-change]` compares route/reason/intent/risk/fallback per fixture turn between two replay runs (default: committed baseline vs latest) -> `metrics/decision-diff.md`.
