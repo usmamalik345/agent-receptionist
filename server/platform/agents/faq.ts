@@ -36,7 +36,7 @@ export const CLARIFY_TEXT = (t: Tenant) =>
 
 export async function runFaqAgent(d: FaqDeps, text: string, tr: TriageResult): Promise<AgentReply & { llmMeta?: { ttftMs: number | null; cacheHit: boolean; step: string; fallback: string | null } }> {
   const t = d.tenant
-  const use = async <T>(name: string, args: Record<string, unknown>) => {
+  const invoke = async <T>(name: string, args: Record<string, unknown>) => {
     const r = await callTool<T>('faq', name, args, d.ctx)
     d.tools.push(r.record)
     return r
@@ -52,12 +52,12 @@ export async function runFaqAgent(d: FaqDeps, text: string, tr: TriageResult): P
       return reply(`I'm sorry you're in pain. ${e.message} Would you like me to book an emergency appointment?`, 'emergency', [e.message])
     }
     case 'hours': {
-      const r = await use<HoursAnswer | null>('get_hours', { question: text })
+      const r = await invoke<HoursAnswer | null>('get_hours', { question: text })
       if (r.ok && r.result) return reply(r.result.text, 'get_hours', t.locations.map((l) => JSON.stringify(l.hours)), { source: 'tool', citations: r.result.citations })
       break
     }
     case 'prices': {
-      const r = await use<Array<{ item: string; price: string | null }>>('get_prices', {})
+      const r = await invoke<Array<{ item: string; price: string | null }>>('get_prices', {})
       if (!r.ok) break
       const items = r.result
       const hit = items.filter((i) => text.toLowerCase().includes(i.item.toLowerCase().split(/\s+/)[0]))
@@ -70,7 +70,7 @@ export async function runFaqAgent(d: FaqDeps, text: string, tr: TriageResult): P
       return reply(`${spokenList(priced.map((i) => `${i.item.toLowerCase()} is ${i.price}`))}. Is there something specific you'd like a price for?`.replace(/^./, (c) => c.toUpperCase()), 'get_prices:list', grounding, { source: 'tool' })
     }
     case 'policy': {
-      const r = await use<{ checkIn: string; checkOut: string; cancellation: string }>('get_policy', {})
+      const r = await invoke<{ checkIn: string; checkOut: string; cancellation: string }>('get_policy', {})
       if (!r.ok) break
       const p = r.result
       const g = [`check-in ${p.checkIn}`, `check-out ${p.checkOut}`, p.cancellation]
@@ -79,7 +79,7 @@ export async function runFaqAgent(d: FaqDeps, text: string, tr: TriageResult): P
     }
   }
   // Open question -> retrieval + response agent (LLM) behind the latency ladder
-  const s = await use<RetrievalResult>('search_knowledge', { query: text })
+  const s = await invoke<RetrievalResult>('search_knowledge', { query: text })
   if (!s.ok) return reply(CLARIFY_TEXT(t), 'tool_error', [], { escalate: { reason: `tool_failure:search_knowledge:${s.error}` } })
   if (!s.result.grounded) return reply(CLARIFY_TEXT(t), 'no_grounded_passage', [])
   const passages = s.result.passages

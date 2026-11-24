@@ -93,7 +93,7 @@ export interface BookingDeps {
 export async function runBookingAgent(d: BookingDeps, s: BookingState, text: string, intent: 'booking' | 'confirm_yes' | 'confirm_no'): Promise<AgentReply> {
   const t = d.tenant
   s.active = true
-  const use = async <T>(name: string, args: Record<string, unknown>) => {
+  const invoke = async <T>(name: string, args: Record<string, unknown>) => {
     const r = await callTool<T>('booking', name, args, d.ctx)
     d.tools.push(r.record)
     return r
@@ -101,7 +101,7 @@ export async function runBookingAgent(d: BookingDeps, s: BookingState, text: str
 
   if (intent === 'confirm_yes' && s.pending) {
     const tool = t.vertical === 'dental' ? 'book_appointment' : 'book_room'
-    const r = await use<Booking>(tool, { ...s.pending.args, confirmation_id: s.pending.id })
+    const r = await invoke<Booking>(tool, { ...s.pending.args, confirmation_id: s.pending.id })
     const summary = s.pending.summary
     s.pending = undefined
     if (!r.ok) {
@@ -124,12 +124,12 @@ export async function runBookingAgent(d: BookingDeps, s: BookingState, text: str
   }
 
   extractInto(s, t, text, d.today)
-  return t.vertical === 'dental' ? dentalNext(d, s, use) : hotelNext(d, s, use)
+  return t.vertical === 'dental' ? dentalNext(d, s, invoke) : hotelNext(d, s, invoke)
 }
 
-type Use = <T>(name: string, args: Record<string, unknown>) => Promise<{ ok: true; result: T } | { ok: false; error: string }>
+type Invoke = <T>(name: string, args: Record<string, unknown>) => Promise<{ ok: true; result: T } | { ok: false; error: string }>
 
-async function dentalNext(d: BookingDeps, s: BookingState, use: Use): Promise<AgentReply> {
+async function dentalNext(d: BookingDeps, s: BookingState, invoke: Invoke): Promise<AgentReply> {
   const t = d.tenant
   if (!s.treatment) {
     s.expecting = 'treatment'
@@ -147,7 +147,7 @@ async function dentalNext(d: BookingDeps, s: BookingState, use: Use): Promise<Ag
     return reply('What day would suit you?', 'ask_date')
   }
   if (!s.time || !s.offered?.includes(s.time)) {
-    const r = await use<string[]>('check_availability', { date: s.date, treatment: s.treatment, location: s.location })
+    const r = await invoke<string[]>('check_availability', { date: s.date, treatment: s.treatment, location: s.location })
     if (!r.ok) return reply("Sorry, I can't see the diary right now. I'll pass you to the team.", 'check_availability:failed', [], { escalate: { reason: `tool_failure:check_availability:${r.error}` } })
     const slots = r.result
     if (!slots.length) {
@@ -181,7 +181,7 @@ async function dentalNext(d: BookingDeps, s: BookingState, use: Use): Promise<Ag
   return reply(`Just to confirm, that's ${summary}. Shall I book it?`, 'confirm_request', [summary, s.phone])
 }
 
-async function hotelNext(d: BookingDeps, s: BookingState, use: Use): Promise<AgentReply> {
+async function hotelNext(d: BookingDeps, s: BookingState, invoke: Invoke): Promise<AgentReply> {
   const t = d.tenant
   if (!s.checkIn || !s.checkOut) {
     s.expecting = 'dates'
@@ -197,7 +197,7 @@ async function hotelNext(d: BookingDeps, s: BookingState, use: Use): Promise<Age
     return reply('And how many guests will there be?', 'ask_guests')
   }
   if (!s.roomType || !s.offered?.includes(s.roomType)) {
-    const r = await use<Array<{ type: string; ratePerNight: number; nights: number; total: number }>>('check_room_availability', { check_in: s.checkIn, check_out: s.checkOut, guests: s.guests })
+    const r = await invoke<Array<{ type: string; ratePerNight: number; nights: number; total: number }>>('check_room_availability', { check_in: s.checkIn, check_out: s.checkOut, guests: s.guests })
     if (!r.ok) return reply("Sorry, I can't see availability right now. I'll pass you to the team.", 'check_room_availability:failed', [], { escalate: { reason: `tool_failure:check_room_availability:${r.error}` } })
     const opts = r.result
     const nights = nightsBetween(s.checkIn, s.checkOut)
