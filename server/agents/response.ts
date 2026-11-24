@@ -11,6 +11,7 @@ export const RESPONSE_SYSTEM_PROMPT = [
   'Answer the caller in at most 2 short spoken sentences, using ONLY the facts in CONTEXT.',
   'Never state a price, time, date, name or phone number that is not written in CONTEXT.',
   'If CONTEXT does not answer the question, say you will ask the team to confirm.',
+  'If CONTEXT gives different answers for different locations, say each one briefly; keep qualifiers such as "phone lines only".',
   'End each fact with the id of the passage it came from in square brackets, e.g. [faq:0].',
   'No markdown, no lists.',
 ].join('\n')
@@ -32,11 +33,25 @@ export function buildResponseMessages(business: string, question: string, passag
   ]
 }
 
+/**
+ * Real models (seen with gpt-oss on Groq) put typographic characters into plain
+ * facts: narrow no-break spaces inside phone numbers (0116\u202f247\u202f0431),
+ * non-breaking hyphens (Same\u2011day), curly apostrophes. Normalise them so the
+ * spoken text, guard regexes, cache and transcripts all see plain text.
+ */
+export function normalizeSpoken(text: string): string {
+  return text
+    .replace(/[\u00a0\u2007\u2009\u202f]/g, ' ')
+    .replace(/[\u2010\u2011]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+}
+
 const CITE = /\s*\[([a-z_-]+(?::[a-z0-9-]+)?)\]/gi
 
 export function extractCitations(text: string, allowed: Set<string>): { spoken: string; citations: string[] } {
   const citations: string[] = []
-  const spoken = text
+  const spoken = normalizeSpoken(text)
     .replace(CITE, (_m, id: string) => {
       if (allowed.has(id) && !citations.includes(id)) citations.push(id)
       return ''

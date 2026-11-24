@@ -96,3 +96,16 @@ test('runtime: MULTI_AGENT off -> engine path only', async () => {
   const r = await agent.turn(callId, 'What payment options do you have?')
   assert.equal(r.trace.agent_path, 'engine')
 })
+
+test('extractCitations normalises typographic characters real models emit (gpt-oss: U+202F in phone numbers)', () => {
+  const out = extractCitations('Call 0116\u202f247\u202f0431 for a same\u2011day slot, we\u2019re here. [location:upperton-road-practice]', new Set(['location:upperton-road-practice']))
+  assert.equal(out.spoken, "Call 0116 247 0431 for a same-day slot, we're here.")
+  assert.deepEqual(out.citations, ['location:upperton-road-practice'])
+})
+
+test('retrieval reaches hours/address passages from plain wording; hours passage keeps location notes', () => {
+  assert.match(retrieve(mmDentalBusiness, 'Where are you based?').passages[0].id, /^location:/)
+  assert.match(retrieve(mmDentalBusiness, 'Which day are you closed?').passages[0].id, /^hours:/)
+  const upperton = buildPassages(mmDentalBusiness).find((p) => p.id === 'hours:upperton-road-practice')!
+  assert.match(upperton.text, /Saturday 9am–12pm phone lines only, Sunday closed\. Note: Saturday patients are seen at Uppingham Road/)
+})
