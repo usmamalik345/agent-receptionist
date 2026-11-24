@@ -1,0 +1,11 @@
+node_modules
+dist
+logs
+metrics
+recordings
+.env
+.env.*
+!.env.example
+*.zip
+scripts/_wa-shots
+.git
