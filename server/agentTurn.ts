@@ -275,6 +275,9 @@ export class AgentRuntime {
     let engineMemo: EngineReply | null = null
     const runEngine = (t: string): EngineReply => {
       if (!engineMemo || t !== text) {
+        // The engine reads a process-wide "active business". Turns are async, so another call
+        // (other tenant) may have switched it since this turn started: re-pin it right before the sync call.
+        setActiveBusiness(biz)
         const r = processGuestMessage({
           text: t,
           step: s.step === 'idle' ? 'await_intent' : s.step,
