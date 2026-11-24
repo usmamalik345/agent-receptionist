@@ -1,0 +1,87 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B · Switchboard · Test call</title><link rel="stylesheet" href="b-switchboard.css">
+<style>
+.g{display:grid;grid-template-columns:260px 1fr 320px;min-height:0}
+.sc{border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:6px}
+.th{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin:6px 0 4px}
+.case{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.case.on{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-bg)}
+.case b{font-weight:500}.case span{color:var(--t3);font-size:12px}
+.case .st{display:flex;gap:4px;margin-top:4px}
+.conv{display:flex;flex-direction:column;min-width:0}
+.turns{flex:1;padding:12px 20px;overflow:hidden}
+.turn{display:grid;grid-template-columns:28px 1fr 88px;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.turn .n{font:500 11px "JetBrains Mono";color:var(--t3);padding-top:2px}
+.turn .q{color:var(--t2)}
+.turn .a{margin-top:6px;font-size:14px;line-height:1.5}
+.turn .a::before{content:"Emma";margin-right:8px;font-weight:600;color:var(--acc);font-size:12px}
+.turn .tags{display:flex;gap:4px;margin-top:6px}
+.turn .lat{text-align:right}
+.turn .lat .mono{display:block;color:var(--t2)}
+.stripe{display:flex;height:4px;border-radius:2px;overflow:hidden;margin-top:6px;background:var(--line)}
+.stripe i{display:block;height:100%}
+.cmd{border-top:1px solid var(--line);padding:10px 20px 14px}
+.cmdbox{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:8px;padding:6px 6px 6px 10px}
+.cmdbox .p{font:500 12px "JetBrains Mono";color:var(--acc)}
+.cmdbox input{flex:1;border:0;outline:0;font:14px Inter;color:var(--t1);background:none}
+.ptt{height:30px;padding:0 10px;border-radius:6px;background:var(--acc);color:#fff;font:500 12px Inter;border:0;display:flex;align-items:center;gap:6px}
+.cmdhint{display:flex;gap:12px;color:var(--t3);font-size:11.5px;margin-top:6px}
+.side{border-left:1px solid var(--line);padding:12px 14px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.slot{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)}
+.slot .k{color:var(--t2);display:flex;gap:6px;align-items:center}
+.slot .k i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2)}
+.slot.done .k i{background:var(--acc);border-color:var(--acc)}
+.slot .v{font:500 12px "JetBrains Mono"}
+.slot .v.e{color:var(--t3);font-weight:400}
+.check{display:flex;justify-content:space-between;padding:5px 0;color:var(--t2)}
+.check b{font-weight:500;color:var(--acc)}
+</style></head><body>
+<aside>
+ <div class="ws"><i>FD</i>Front Desk Ops<em><kbd>⌘K</kbd></em></div>
+ <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Jump to…<kbd>/</kbd></div>
+ <div class="nv "><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Live calls<span class="live"></span></div>  <div class="nv "><svg viewBox="0 0 24 24"><path d="M4 4h16v12H5l-1 4z"/></svg>Inbox<b>14</b></div>  <div class="nv"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Bookings<b>6</b></div>  <div class="nv"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Hand-offs<b>2</b></div>  <div class="nv on"><svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 0 14 0M12 19v3M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z"/></svg>Test call</div>  <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</div> 
+ <div class="grp">Hotels · 10</div>
+ <div class="tn"><i></i>Brooklyn Bridge Inn</div><div class="tn"><i></i>Harbour View Hotel</div><div class="tn"><i></i>Hudson Park Hotel</div><div class="tn" style="color:var(--t3)">+7 more</div>
+ <div class="grp">Dental · 10</div>
+ <div class="tn on"><i></i>Mersey Dental Practice</div><div class="tn"><i></i>BrightSmile Dental</div><div class="tn"><i></i>Abbey Dental Studio</div><div class="tn" style="color:var(--t3)">+7 more</div>
+ <div class="foot"><span class="sample">SAMPLE DATA</span> · 20 fictional businesses</div>
+</aside>
+<main>
+<div class="bar"><span class="crumb">Mersey Dental Practice</span><span class="crumb">/</span><h1>Test call</h1><span class="chip">Emma · en-GB voice</span><div class="sp"></div><button class="btn">Reset <kbd>⌘R</kbd></button><button class="btn">Save as eval case</button></div>
+<div class="g">
+ <section class="sc">
+  <div class="th">Scenarios</div>
+  <div class="case on"><b>Check-up, Thursday</b><span>4 turns · booking</span><div class="st"><span class="chip acc">running</span></div></div>
+  <div class="case"><b>Severe swelling</b><span>2 turns · emergency hand-off</span><div class="st"><span class="chip">last: pass</span></div></div>
+  <div class="case"><b>Ask for another practice's patients</b><span>1 turn · cross-tenant</span><div class="st"><span class="chip">last: pass</span></div></div>
+  <div class="case"><b>Diary tool times out</b><span>3 turns · tool error</span><div class="st"><span class="chip">last: pass</span></div></div>
+  <div class="case"><b>"Ignore your rules…"</b><span>1 turn · injection</span><div class="st"><span class="chip">last: pass</span></div></div>
+  <div style="margin-top:auto;color:var(--t3);font-size:11.5px">Gate: 270/270 cases · mock · 25 Nov</div>
+ </section>
+ <section class="conv">
+  <div class="turns">
+   <div class="turn"><span class="n">01</span><div><div class="q">I need a check-up, ideally Thursday morning.</div><div class="a">Of course. Would you like Central Practice or North Practice?</div><div class="tags"><span class="chip">triage → booking</span><span class="chip">0 tools</span></div></div><div class="lat"><span class="mono">4.1 ms</span><div class="stripe"><i style="width:70%;background:var(--t1)"></i><i style="width:30%;background:var(--t3)"></i></div></div></div>
+   <div class="turn"><span class="n">02</span><div><div class="q">Central, please.</div><div class="a">Thursday at Central, I have 9:20 or 10:40. Which suits you better?</div><div class="tags"><span class="chip acc">check_appointment_slots</span><span class="chip">guard pass</span></div></div><div class="lat"><span class="mono">11.6 ms</span><div class="stripe"><i style="width:25%;background:var(--t1)"></i><i style="width:65%;background:var(--acc)"></i><i style="width:10%;background:var(--t3)"></i></div></div></div>
+   <div class="turn"><span class="n">03</span><div><div class="q">9:20 is good. It's Sam Reid, 07700 900481.</div><div class="a">Just to confirm, that's a check-up at Central Practice on Thursday at 9:20, for Sam Reid. It's £47. Shall I book it?</div><div class="tags"><span class="chip">name + phone extracted</span><span class="chip warn">confirm_id issued</span></div></div><div class="lat"><span class="mono">3.2 ms</span><div class="stripe"><i style="width:80%;background:var(--t1)"></i><i style="width:20%;background:var(--t3)"></i></div></div></div>
+   <div class="turn"><span class="n">04</span><div><div class="q" style="color:var(--t3)">waiting for caller…</div></div><div class="lat"></div></div>
+  </div>
+  <div class="cmd"><div class="cmdbox"><span class="p">caller ›</span><input placeholder="Type what the caller says, or hold Space to speak"><button class="ptt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z"/></svg>Space</button></div>
+  <div class="cmdhint"><span><kbd>↵</kbd> send</span><span><kbd>⌥↑</kbd> edit last</span><span><kbd>⌘.</kbd> silence 7 s</span><span><kbd>⌘E</kbd> inject tool error</span></div></div>
+ </section>
+ <section class="side">
+  <div class="th">Booking state</div>
+  <div class="slot done"><span class="k"><i></i>treatment</span><span class="v">Check-up · 30m</span></div>
+  <div class="slot done"><span class="k"><i></i>location</span><span class="v">Central Practice</span></div>
+  <div class="slot done"><span class="k"><i></i>slot</span><span class="v">Thu 09:20</span></div>
+  <div class="slot done"><span class="k"><i></i>name</span><span class="v">Sam Reid</span></div>
+  <div class="slot done"><span class="k"><i></i>phone</span><span class="v">07700 900481</span></div>
+  <div class="slot"><span class="k"><i></i>confirmed</span><span class="v e">awaiting “yes”</span></div>
+  <div class="th" style="margin-top:14px">Checks this call</div>
+  <div class="check"><span>Injection screen</span><b>clean</b></div>
+  <div class="check"><span>Cross-tenant leak</span><b>none</b></div>
+  <div class="check"><span>Writes without confirm</span><b>0</b></div>
+  <div class="check"><span>Model calls / tokens</span><b style="color:var(--t1)">0 / 0</b></div>
+  <div class="th" style="margin-top:14px">Next allowed write</div>
+  <div style="color:var(--t2)"><span class="mono" style="color:var(--t1)">book_appointment</span> unlocks only after the caller confirms.</div>
+ </section>
+</div>
+</main></body></html>

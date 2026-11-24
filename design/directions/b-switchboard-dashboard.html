@@ -1,0 +1,93 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B · Switchboard · Live calls</title><link rel="stylesheet" href="b-switchboard.css">
+<style>
+.grid{display:grid;grid-template-columns:320px 1fr;min-height:0}
+.list{border-right:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column}
+.lh{display:flex;justify-content:space-between;padding:10px 14px;color:var(--t3);font-size:11.5px;font-weight:500;border-bottom:1px solid var(--line)}
+.row{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
+.row.on{background:var(--hover);box-shadow:inset 2px 0 0 var(--acc)}
+.r1{display:flex;align-items:center;gap:6px}.r1 .mono{margin-left:auto;color:var(--t3)}
+.r2{color:var(--t2)}
+.r3{display:flex;gap:4px;align-items:center;margin-top:2px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 3px var(--acc-bg)}
+.kh{margin-top:auto;padding:10px 14px;color:var(--t3);font-size:11.5px;border-top:1px solid var(--line);display:flex;gap:4px;align-items:center}
+.hero{padding:16px 20px;display:flex;flex-direction:column;gap:16px;min-width:0;overflow:hidden}
+.hh{display:flex;justify-content:space-between;align-items:flex-start}
+.hh h2{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.meta{color:var(--t3);margin-top:3px}
+.tl{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:linear-gradient(var(--panel),var(--panel))}
+.axis{display:grid;grid-template-columns:72px repeat(3,1fr) auto;color:var(--t3);font:11px "JetBrains Mono";margin-bottom:6px}
+.turnlabel{font-size:11.5px;color:var(--t2);font-weight:500;margin-bottom:6px}
+.lane{display:grid;grid-template-columns:72px 1fr 56px;align-items:center;gap:0;height:26px}
+.ln{font:500 11.5px "JetBrains Mono";color:var(--t2)}
+.track{position:relative;height:16px;background:repeating-linear-gradient(90deg,transparent 0 calc(33.33% - 1px),var(--line) calc(33.33% - 1px) 33.33%);border-radius:3px}
+.track i{position:absolute;top:2px;bottom:2px;background:var(--t1);border-radius:3px;opacity:.85}
+.track i.tool{background:var(--acc);opacity:1}
+.track i.tool span{position:absolute;left:6px;top:-1px;color:#fff;font:500 10.5px/14px "JetBrains Mono";white-space:nowrap}
+.track i.sp{background:var(--t3)}
+.lane .mono{text-align:right;color:var(--t3)}
+.two{display:grid;grid-template-columns:1fr 300px;gap:16px;min-height:0}
+.th{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.m{display:grid;grid-template-columns:56px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.m span{color:var(--t3);font-size:12px}
+.m.b span{color:var(--acc);font-weight:500}
+.insp{border-left:1px solid var(--line);padding-left:16px}
+.insp table{width:100%;border-collapse:collapse}
+.insp td{padding:4px 0;border-bottom:1px dashed var(--line);color:var(--t2)}
+.insp td.mono{text-align:right;color:var(--t1)}
+</style></head><body>
+<aside>
+ <div class="ws"><i>FD</i>Front Desk Ops<em><kbd>⌘K</kbd></em></div>
+ <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Jump to…<kbd>/</kbd></div>
+ <div class="nv on"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Live calls<span class="live"></span></div>  <div class="nv "><svg viewBox="0 0 24 24"><path d="M4 4h16v12H5l-1 4z"/></svg>Inbox<b>14</b></div>  <div class="nv"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Bookings<b>6</b></div>  <div class="nv"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Hand-offs<b>2</b></div>  <div class="nv "><svg viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 0 14 0M12 19v3M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z"/></svg>Test call</div>  <div class="nv"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</div> 
+ <div class="grp">Hotels · 10</div>
+ <div class="tn on"><i></i>Brooklyn Bridge Inn</div><div class="tn"><i></i>Harbour View Hotel</div><div class="tn"><i></i>Hudson Park Hotel</div><div class="tn" style="color:var(--t3)">+7 more</div>
+ <div class="grp">Dental · 10</div>
+ <div class="tn "><i></i>Mersey Dental Practice</div><div class="tn"><i></i>BrightSmile Dental</div><div class="tn"><i></i>Abbey Dental Studio</div><div class="tn" style="color:var(--t3)">+7 more</div>
+ <div class="foot"><span class="sample">SAMPLE DATA</span> · 20 fictional businesses</div>
+</aside>
+<main>
+<div class="bar"><span class="crumb">Brooklyn Bridge Inn</span><span class="crumb">/</span><h1>Live calls</h1><span class="chip acc">● 1 active</span><div class="sp"></div><span style="color:var(--t3)">Filter</span><kbd>F</kbd><button class="btn">Today</button><button class="btn pri">Test call <kbd style="background:#2a2b30;color:#ccc;border-color:#444">T</kbd></button></div>
+<div class="grid">
+ <section class="list">
+  <div class="lh"><span>Calls</span><span>14 today</span></div>
+  <div class="row on"><div class="r1"><span class="live-dot"></span><b>··23</b><span class="mono">01:12</span></div><div class="r2">Booking · 27–29 Nov, 2 guests</div><div class="r3"><span class="chip acc">Booking agent</span><span class="chip">turn 3</span></div></div>
+  <div class="row"><div class="r1"><b>Jane D.</b><span class="mono">9:18p</span></div><div class="r2">Standard Double, 2 nights, $238</div><div class="r3"><span class="chip acc">Booked</span><span class="mono" style="color:var(--t3)">BBI-4821</span></div></div>
+  <div class="row"><div class="r1"><b>··07</b><span class="mono">8:52p</span></div><div class="r2">Late check-out, parking</div><div class="r3"><span class="chip">Answered</span></div></div>
+  <div class="row"><div class="r1"><b>M. Okafor</b><span class="mono">8:30p</span></div><div class="r2">Group change, 9 rooms</div><div class="r3"><span class="chip warn">Handed off</span></div></div>
+  <div class="row"><div class="r1"><b>··88</b><span class="mono">4:12p</span></div><div class="r2">Asked for the guest list</div><div class="r3"><span class="chip bad">Injection screened</span></div></div>
+  <div class="row"><div class="r1"><b>R. Patel</b><span class="mono">2:47p</span></div><div class="r2">Family Room, 12–14 Dec</div><div class="r3"><span class="chip acc">Booked</span></div></div>
+  <div class="row"><div class="r1"><b>··51</b><span class="mono">1:05p</span></div><div class="r2">Is breakfast included?</div><div class="r3"><span class="chip">Answered</span><span class="chip">LLM</span></div></div>
+  <div class="kh"><kbd>J</kbd><kbd>K</kbd> move · <kbd>↵</kbd> open · <kbd>H</kbd> hand off</div>
+ </section>
+ <section class="hero">
+  <div class="hh"><div><div style="display:flex;gap:8px;align-items:center"><h2>Caller ··23</h2><span class="chip acc">● Live 01:12</span><span class="chip">Noah · en-US</span></div><div class="meta">Started 9:41 pm · 3 turns · 0 model calls · 0 tokens</div></div><div style="display:flex;gap:6px"><button class="btn">Listen</button><button class="btn">Take over <kbd>H</kbd></button></div></div>
+  <div class="tl">
+   <div class="axis"><span></span><span>0 ms</span><span>5</span><span>10</span><span>15 ms</span></div>
+   <div class="turnlabel">Turn 3 · "Two of us."</div>
+   <div class="lane"><span class="ln">screen</span><div class="track"><i style="left:0;width:1%"></i></div><span class="mono">0.1</span></div>
+   <div class="lane"><span class="ln">triage</span><div class="track"><i style="left:1%;width:20%"></i></div><span class="mono">3.0</span></div>
+   <div class="lane"><span class="ln">booking</span><div class="track"><i style="left:21%;width:7%"></i><i class="tool" style="left:28%;width:65%"><span>check_room_availability</span></i></div><span class="mono">10.8</span></div>
+   <div class="lane"><span class="ln">guard</span><div class="track"><i style="left:93%;width:3%"></i></div><span class="mono">0.3</span></div>
+   <div class="lane"><span class="ln">speech</span><div class="track"><i class="sp" style="left:96%;width:4%"></i></div><span class="mono">2 sent.</span></div>
+  </div>
+  <div class="two">
+   <div class="tx">
+    <div class="th">Transcript</div>
+    <div class="m b"><span>Noah</span>Hi, you're through to Brooklyn Bridge Inn, this is Noah. How can I help?</div>
+    <div class="m"><span>Caller</span>I'd like a room from the 27th for two nights.</div>
+    <div class="m b"><span>Noah</span>Lovely. And how many guests will there be?</div>
+    <div class="m"><span>Caller</span>Two of us.</div>
+    <div class="m b"><span>Noah</span>For two nights from Friday the 27th, I have a Standard Double at $119 a night, or a Twin at $131. Which would you like?</div>
+   </div>
+   <div class="insp">
+    <div class="th">Handoff · triage → booking</div>
+    <table><tr><td>intent</td><td class="mono">booking.slot_fill</td></tr><tr><td>check_in</td><td class="mono">2026-11-27</td></tr><tr><td>nights</td><td class="mono">2</td></tr><tr><td>guests</td><td class="mono">2</td></tr><tr><td>room_type</td><td class="mono" style="color:var(--t3)">—</td></tr><tr><td>confirm_id</td><td class="mono" style="color:var(--t3)">not issued</td></tr></table>
+    <div class="th" style="margin-top:14px">Allowed tools</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px"><span class="chip">check_room_availability</span><span class="chip">book_room · needs confirm</span><span class="chip">handoff_to_human</span></div>
+    <div class="th" style="margin-top:14px">Guard</div>
+    <div style="color:var(--t2)">Prices match rate card · no other tenant named · no PII echoed</div>
+   </div>
+  </div>
+ </section>
+</div>
+</main></body></html>

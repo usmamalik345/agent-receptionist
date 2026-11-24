@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{--paper:#F5EFE3;--paper-2:#EFE7D7;--card:#FBF8F1;--ink:#211C16;--ink-2:#5B5247;--ink-3:#8C8172;--rule:#DDD2BE;--rule-2:#CBBEA6;--accent:#B0502B;--accent-soft:#F2DCCF;--ok:#3F6B4A;
+--s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px}
+*{box-sizing:border-box;margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 "Source Sans 3",system-ui,sans-serif;width:1440px;height:900px;overflow:hidden;display:grid;grid-template-columns:232px 1fr}
+.serif{font-family:Fraunces,Georgia,serif;font-optical-sizing:auto}
+.mono{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+aside{border-right:1px solid var(--rule);padding:var(--s5) var(--s4);display:flex;flex-direction:column;gap:var(--s5)}
+.mast{font-family:Fraunces,serif;font-size:21px;font-weight:600;letter-spacing:-.01em}
+.mast small{display:block;font:500 11px/1.4 "Source Sans 3";letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-top:2px}
+.prop{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:var(--s3) 0}
+.prop .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.prop .v{font-family:Fraunces,serif;font-size:17px;margin-top:2px}
+.prop .v span{font:13px "Source Sans 3";color:var(--ink-2)}
+nav a{display:flex;justify-content:space-between;padding:7px 0;color:var(--ink-2);text-decoration:none;border-bottom:1px dotted var(--rule)}
+nav a.on{color:var(--ink);font-weight:600}
+nav a{position:relative}nav a.on::before{content:"";position:absolute;left:-12px;top:14px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+nav a em{font-style:normal;font-family:"IBM Plex Mono";font-size:12px;color:var(--ink-3)}
+.foot{margin-top:auto;font-size:12px;color:var(--ink-3);line-height:1.45}
+main{display:grid;grid-template-rows:auto 1fr;min-width:0}
+header{display:flex;align-items:flex-end;gap:var(--s4);padding:var(--s5) var(--s6) var(--s4);border-bottom:2px solid var(--ink)}
+h1{font-family:Fraunces,serif;font-weight:500;font-size:34px;letter-spacing:-.02em;line-height:1}
+header .date{color:var(--ink-2);font-size:14px;padding-bottom:3px}
+header .sp{flex:1}
+.stat{text-align:right;padding-left:var(--s5);border-left:1px solid var(--rule)}
+.stat b{display:block;font-family:Fraunces,serif;font-size:24px;font-weight:500;line-height:1.1}
+.stat span{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.btn{font:600 14px "Source Sans 3";border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:2px}
+.btn.line{background:none;color:var(--ink)}
+.tag{display:inline-block;font:600 10.5px/1 "Source Sans 3";letter-spacing:.12em;text-transform:uppercase;padding:4px 6px;border:1px solid currentColor;border-radius:2px}
+.tag.ok{color:var(--ok)}.tag.acc{color:var(--accent)}.tag.mute{color:var(--ink-3)}
+.sample{font:600 10px "Source Sans 3";letter-spacing:.14em;text-transform:uppercase;color:var(--accent);border:1px dashed var(--accent);padding:3px 6px;border-radius:2px}
