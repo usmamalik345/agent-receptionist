@@ -106,7 +106,9 @@ export async function runBookingAgent(d: BookingDeps, s: BookingState, text: str
     if (!r.ok) {
       if (/unavailable/.test(r.error)) {
         s.time = undefined; s.roomType = undefined; s.offered = undefined
-        return reply("Sorry, that's just been taken. Let me find you another option.", `${tool}:unavailable`, [], { escalate: undefined })
+        // Another caller confirmed the same slot/room first: re-offer straight away from fresh availability.
+        const next = await (t.vertical === 'dental' ? dentalNext(d, s, invoke) : hotelNext(d, s, invoke))
+        return { ...next, text: `Sorry, that one's just been taken. ${next.text}`, decision: `${tool}:unavailable;${next.decision}` }
       }
       return reply("I'm sorry, I couldn't complete the booking just now. I'll pass you to the team so they can sort it out.", `${tool}:failed`, [], { escalate: { reason: `tool_failure:${tool}:${r.error}` } })
     }

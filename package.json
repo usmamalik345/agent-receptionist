@@ -32,6 +32,7 @@
     "tenants:gen": "tsx scripts/gen-sample-tenants.mts",
     "eval:platform:gen": "tsx scripts/gen-platform-evals.mts",
     "eval:platform": "tsx scripts/platform-eval.mts",
+    "test:concurrency": "tsx scripts/concurrency.mts",
     "eval:platform:gate": "tsx scripts/platform-eval.mts --gate"
   },
   "dependencies": {
