@@ -6,91 +6,10 @@
  *   falling back to the LRU if Redis is unreachable. No extra npm dependency.
  * Hit/miss counters feed the replay harness ("cache hit rate").
  */
-import { createHash } from 'node:crypto'
 import net from 'node:net'
 
-export const normalizeQuestion = (text: string): string =>
-  text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
-
-export function cacheKey(text: string, business: string, policyVersion: string): string {
-  const h = createHash('sha256').update(normalizeQuestion(text)).digest('hex').slice(0, 32)
-  return `rc:${business}:${policyVersion}:${h}`
-}
-
-export interface CacheStats {
-  hits: number
-  misses: number
-  sets: number
-  errors: number
-  backend: 'memory' | 'redis'
-}
-
-export interface ResponseCache {
-  key(text: string, business: string, policyVersion: string): string
-  get(key: string): Promise<string | null>
-  set(key: string, value: string): Promise<void>
-  stats(): CacheStats
-  resetStats(): void
-  close?(): Promise<void>
-}
-
-abstract class Counted {
-  protected s: CacheStats
-  constructor(backend: CacheStats['backend']) {
-    this.s = { hits: 0, misses: 0, sets: 0, errors: 0, backend }
-  }
-  key(text: string, business: string, policyVersion: string): string {
-    return cacheKey(text, business, policyVersion)
-  }
-  stats(): CacheStats {
-    return { ...this.s }
-  }
-  resetStats(): void {
-    this.s = { ...this.s, hits: 0, misses: 0, sets: 0, errors: 0 }
-  }
-}
-
-export class LruCache extends Counted implements ResponseCache {
-  private map = new Map<string, { value: string; expires: number }>()
-  private readonly ttlMs: number
-  private readonly max: number
-  private readonly clock: () => number
-  constructor(ttlMs: number, max = 500, clock: () => number = Date.now) {
-    super('memory')
-    this.ttlMs = ttlMs
-    this.max = max
-    this.clock = clock
-  }
-  /** Synchronous peek used by tests/back-compat. */
-  getSync(key: string): string | null {
-    const hit = this.map.get(key)
-    if (!hit) return null
-    if (hit.expires < this.clock()) {
-      this.map.delete(key)
-      return null
-    }
-    this.map.delete(key) // refresh LRU position
-    this.map.set(key, hit)
-    return hit.value
-  }
-  async get(key: string): Promise<string | null> {
-    const v = this.getSync(key)
-    if (v === null) this.s.misses++
-    else this.s.hits++
-    return v
-  }
-  /** Sync so callers that do not await still populate the cache. */
-  set(key: string, value: string): Promise<void> {
-    this.map.delete(key)
-    this.map.set(key, { value, expires: this.clock() + this.ttlMs })
-    while (this.map.size > this.max) this.map.delete(this.map.keys().next().value as string)
-    this.s.sets++
-    return Promise.resolve()
-  }
-  get size(): number {
-    return this.map.size
-  }
-}
+import { Counted, LruCache, type ResponseCache } from './cacheCore.ts'
+export * from './cacheCore.ts'
 
 /** Minimal RESP2 encoder/decoder - enough for GET/SET/PING. */
 export function encodeCommand(args: string[]): string {

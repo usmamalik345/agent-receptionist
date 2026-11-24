@@ -9,9 +9,9 @@
  * Today the primary responder is the deterministic rule engine (no LLM in this repo),
  * so the ladder only fires when a slower responder (e.g. a future LLM) is plugged in.
  */
-import { LruCache, type ResponseCache } from './cache.ts'
+import { LruCache, type ResponseCache } from './cacheCore.ts'
 import type { FallbackReason } from './router.ts'
-export { normalizeQuestion } from './cache.ts'
+export { normalizeQuestion } from './cacheCore.ts'
 
 export interface LatencyConfig {
   budgetMs: number

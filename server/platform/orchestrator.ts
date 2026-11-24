@@ -6,12 +6,11 @@
  * Calls are bound to the tenant that started them: a call id used with another tenant id is
  * "not found" (no existence leak). One trace per turn with a span per agent and per tool.
  */
-import { randomUUID } from 'node:crypto'
 import { SAFE_LINE } from '../agents/guard.ts'
-import { createResponseCache, type ResponseCache } from '../cache.ts'
+import { LruCache, type ResponseCache } from '../cacheCore.ts'
 import { loadLatencyConfig, SilenceMonitor, TokenBudget, type LatencyConfig, type SilenceAction } from '../latency.ts'
 import { loadLlmClient, type LlmClient } from '../llm.ts'
-import { CallTrace, defaultTraceSink, type Sink, type TurnTrace } from '../tracing.ts'
+import { CallTrace, type Sink, type TurnTrace } from '../tracingCore.ts'
 import { emptyBooking, localToday, resumePrompt, runBookingAgent, type BookingState } from './agents/booking.ts'
 import { CLARIFY_TEXT, runFaqAgent } from './agents/faq.ts'
 import { buildLeakIndex, runGuardAgent, type LeakIndex } from './agents/guard.ts'
@@ -101,7 +100,8 @@ export class Platform {
     this.store = opts.store ?? new MemoryBookingStore()
     this.config = opts.config ?? loadLatencyConfig()
     this.llm = opts.llm ?? loadLlmClient()
-    this.cache = opts.cache ?? createResponseCache(process.env, this.config.cacheTtlMs)
+    // Server entries pass createResponseCache() (Redis when REDIS_URL is set); default is the in-memory LRU
+    this.cache = opts.cache ?? new LruCache(this.config.cacheTtlMs)
     this.tokens = new TokenBudget(this.config.maxTokensPerCall)
     this.silenceMonitor = new SilenceMonitor(this.config.callerSilenceMs)
     this.leak = buildLeakIndex(this.tenants.values())
@@ -130,10 +130,10 @@ export class Platform {
   start(tenantId: string, input: { callId?: string } = {}) {
     const t = this.tenant(tenantId)
     this.limit(t)
-    const callId = input.callId && !this.sessions.has(input.callId) ? input.callId : randomUUID()
+    const callId = input.callId && !this.sessions.has(input.callId) ? input.callId : globalThis.crypto.randomUUID()
     this.sessions.set(callId, {
       callId, tenantId, booking: emptyBooking(), callerTexts: [], failedClarifications: 0, escalated: false, turn: 0,
-      trace: new CallTrace(callId, { source: 'server', business: t.id, channel: 'voice', sink: this.opts.traceSink ?? defaultTraceSink() }),
+      trace: new CallTrace(callId, { source: 'server', business: t.id, channel: 'voice', sink: this.opts.traceSink ?? (() => {}) }),
     })
     const greeting = `Hi, you're through to ${t.name.replace(/\s*\(SAMPLE\)\s*/i, '')}, this is ${t.voice.agentName}. How can I help?`
     this.log.info('call_start', { tenant: t.id, call_id: callId, vertical: t.vertical })

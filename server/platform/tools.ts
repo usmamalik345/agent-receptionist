@@ -8,7 +8,7 @@ import { answerHoursQuestion } from '../agents/hoursTool.ts'
 import { retrieve } from '../agents/retrieval.ts'
 import { runTool } from '../tools.ts'
 import type { AgentName, ToolCallRecord } from './protocol.ts'
-import { toBusinessConfig } from './registry.ts'
+import { toBusinessConfig } from './tenantAdapter.ts'
 import type { BookingStore } from './store.ts'
 import { money, type Tenant, type Vertical } from './tenant.ts'
 

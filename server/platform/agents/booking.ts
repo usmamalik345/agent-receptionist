@@ -4,7 +4,6 @@
  * tool needs the confirmation id issued here; the orchestrator passes it to the tool
  * context only on a confirm_yes turn, so a booking can't be written without confirmation.
  */
-import { randomUUID } from 'node:crypto'
 import {
   matchOption, nightsBetween, addDays, parseDates, parseGuests, parseName, parseNights, parsePartOfDay, parsePhone, parseTime,
   ROOM_SYNONYMS, spokenDate, spokenTime, TREATMENT_SYNONYMS,
@@ -176,7 +175,7 @@ async function dentalNext(d: BookingDeps, s: BookingState, invoke: Invoke): Prom
     return reply(`Thanks, ${s.name.split(' ')[0]}. And the best number to reach you on?`, 'ask_phone')
   }
   const summary = `${article(s.treatment)} ${s.treatment.toLowerCase()} at ${s.location} on ${spokenDate(s.date)} at ${spokenTime(s.time!)}, for ${s.name}`
-  s.pending = { id: randomUUID(), summary, args: { date: s.date, time: s.time, treatment: s.treatment, location: s.location, name: s.name, phone: s.phone } }
+  s.pending = { id: globalThis.crypto.randomUUID(), summary, args: { date: s.date, time: s.time, treatment: s.treatment, location: s.location, name: s.name, phone: s.phone } }
   s.expecting = 'confirm'
   return reply(`Just to confirm, that's ${summary}. Shall I book it?`, 'confirm_request', [summary, s.phone])
 }
@@ -230,7 +229,7 @@ async function hotelNext(d: BookingDeps, s: BookingState, invoke: Invoke): Promi
   const room = t.hotel!.rooms.find((r) => r.type === s.roomType)!
   const total = money(t, room.ratePerNight * nights)
   const summary = `${article(s.roomType!)} ${s.roomType} for ${s.guests} guest${s.guests > 1 ? 's' : ''}, ${nights} night${nights > 1 ? 's' : ''} from ${spokenDate(s.checkIn)}, ${total} in total, under ${s.name}`
-  s.pending = { id: randomUUID(), summary, args: { check_in: s.checkIn, check_out: s.checkOut, room_type: s.roomType, guests: s.guests, name: s.name, phone: s.phone } }
+  s.pending = { id: globalThis.crypto.randomUUID(), summary, args: { check_in: s.checkIn, check_out: s.checkOut, room_type: s.roomType, guests: s.guests, name: s.name, phone: s.phone } }
   s.expecting = 'confirm'
   return reply(`Just to confirm, that's ${summary}. Shall I book it?`, 'confirm_request', [summary, s.phone, `${money(t, room.ratePerNight)} per night`])
 }

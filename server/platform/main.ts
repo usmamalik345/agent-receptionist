@@ -12,6 +12,7 @@ import { createLogger } from './logger.ts'
 import { Platform } from './orchestrator.ts'
 import { loadTenants } from './registry.ts'
 import { defaultTraceSink } from '../tracing.ts'
+import { createResponseCache } from '../cache.ts'
 
 const { config, problems } = loadPlatformEnv()
 const logger = createLogger({ level: config.logLevel })
@@ -30,7 +31,7 @@ const traceSink = (r: object) => {
     logger.warn('trace_write_failed', { error: e instanceof Error ? e.message : String(e) })
   }
 }
-const platform = new Platform({ tenants, logger, traceSink, defaultRateLimitPerMinute: config.defaultRateLimitPerMinute })
+const platform = new Platform({ tenants, logger, traceSink, cache: createResponseCache(), defaultRateLimitPerMinute: config.defaultRateLimitPerMinute })
 
 const app = express()
 app.disable('x-powered-by')

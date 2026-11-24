@@ -4,7 +4,6 @@
  * from the tenant's config (opening hours / room counts) minus existing bookings.
  * Swap for a database by implementing `BookingStore` (same tenant-scoped methods).
  */
-import { randomInt } from 'node:crypto'
 import { addDays, nightsBetween, weekdayOf } from './extract.ts'
 import type { Tenant } from './tenant.ts'
 
@@ -97,7 +96,7 @@ export class MemoryBookingStore implements BookingStore {
   }
 
   private ref(t: Tenant): string {
-    return `${t.vertical === 'hotel' ? 'H' : 'D'}${randomInt(1000, 9999)}`
+    return `${t.vertical === 'hotel' ? 'H' : 'D'}${1000 + (globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 9000)}`
   }
 
   createAppointment(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking {

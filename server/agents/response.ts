@@ -29,7 +29,7 @@ export interface ResponseAgentOutput {
 }
 
 /** Fallback tier settings (env): fewer passages and fewer tokens so the small model answers fast. */
-export const smallTierConfig = (env: Record<string, string | undefined> = process.env) => ({
+export const smallTierConfig = (env: Record<string, string | undefined> = typeof process !== 'undefined' ? process.env : {}) => ({
   contextPassages: Math.max(1, Number(env.LLM_SMALL_CONTEXT_PASSAGES || 1) || 1),
   maxTokens: Math.max(16, Number(env.LLM_SMALL_MAX_TOKENS || 80) || 80),
 })

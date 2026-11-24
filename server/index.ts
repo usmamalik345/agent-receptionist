@@ -17,6 +17,8 @@ import { mountPlatformRoutes } from './platform/http.ts'
 import { createLogger } from './platform/logger.ts'
 import { Platform } from './platform/orchestrator.ts'
 import { loadTenants } from './platform/registry.ts'
+import { createResponseCache } from './cache.ts'
+import { defaultTraceSink } from './tracing.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TTS_CACHE_DIR = path.join(__dirname, '..', '.tts-cache')
@@ -502,7 +504,7 @@ mountAgentRoutes(app)
 {
   const logger = createLogger()
   const { errors } = loadTenants()
-  mountPlatformRoutes(app, new Platform({ tenants: platformTenants, logger }), { logger, tenantErrors: errors })
+  mountPlatformRoutes(app, new Platform({ tenants: platformTenants, logger, traceSink: defaultTraceSink(), cache: createResponseCache() }), { logger, tenantErrors: errors })
 }
 
 app.listen(PORT, () => {
