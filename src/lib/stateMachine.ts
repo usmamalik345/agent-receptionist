@@ -2,6 +2,7 @@ import { RESORT, ROOMS } from '../config/resort'
 import { KNOWLEDGE, matchFaq } from '../config/knowledge'
 import { getActiveBusiness, isDentalIndustry } from './businessRuntime'
 import { dentalGreet, processDentalMessage } from './dentalEngine'
+import { isFillerUtterance } from './fillers'
 import type {
   BookingFields,
   ConversationStep,
@@ -1579,6 +1580,8 @@ export function extractUnlabeledName(text: string): string | null {
 }
 
 export function parseName(text: string): string | null {
+  // "hmm", "uh-huh", "haan", "sorry?" are backchannels, never a guest name
+  if (isFillerUtterance(text)) return null
   if (/ahmed\s+al\s*mansoori|أحمد\s*المنصوري|احمد\s*المنصوري/i.test(text)) {
     return 'Ahmed Al Mansoori'
   }
@@ -1610,6 +1613,7 @@ export function parseName(text: string): string | null {
     .replace(/[.?!,]/g, '')
     .trim()
   if (cleaned.length < 2 || cleaned.length > 40) return null
+  if (isFillerUtterance(cleaned)) return null
   if (/^\+?\d/.test(cleaned)) return null
   if (/\b(need|change|booking|phone|confirmation|check|want|please|room|adult|oct|nov)\b/i.test(cleaned)) return null
   const words = cleaned.split(/\s+/)

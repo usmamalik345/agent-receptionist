@@ -40,23 +40,8 @@ function parsePhone(text: string): string | null {
   return m ? m[0].replace(/\s+/g, ' ').trim() : null
 }
 
-/**
- * Fillers / acknowledgements that are never a name (English + common Urdu/Hindi
- * backchannels heard on UK calls). "hmm" used to be stored as the patient's name.
- */
-const FILLER_WORDS = new Set([
-  'hmm', 'hm', 'mm', 'mmm', 'umm', 'um', 'uh', 'uhh', 'uhm', 'erm', 'er', 'err', 'ah', 'ahh', 'eh', 'oh', 'ooh',
-  'haan', 'han', 'haa', 'ha', 'ji', 'jee', 'acha', 'achha', 'theek', 'hai', 'ok', 'okay', 'k', 'kk', 'yes', 'yeah',
-  'yep', 'yup', 'no', 'nope', 'what', 'sorry', 'pardon', 'huh', 'hello', 'hi', 'hey', 'wait', 'well', 'so', 'like',
-  'right', 'sure', 'alright', 'fine', 'thanks', 'thank', 'you', 'one', 'sec', 'second', 'moment', 'hold', 'on',
-])
-const FILLER_SHAPE = /^(h+m+|m{2,}|u+m+|u+h+m*|e+r+m*|a+h+|o+h+)$/
-
-export function isFillerUtterance(text: string): boolean {
-  const words = text.toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).filter(Boolean)
-  if (words.length === 0) return true
-  return words.every((w) => FILLER_WORDS.has(w) || FILLER_SHAPE.test(w))
-}
+export { isFillerUtterance } from './fillers'
+import { FILLER_SHAPE, FILLER_WORDS, isFillerUtterance } from './fillers'
 
 /** Words that follow "I'm ..." but are not names ("I'm not sure", "I'm really nervous"). */
 const NOT_NAME = new Set([
