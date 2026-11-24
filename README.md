@@ -55,16 +55,19 @@ API (`server/platform/http.ts`): `GET /healthz`, `GET /readyz` (tenant counts), 
 1. Copy a file in `config/tenants/` (hotel or dental) to `config/tenants/<id>.json` and edit it: `id`, `vertical`, `name`, `locations` (hours per day, phone), `hotel.rooms` / `dental.treatments` with prices, policies, `knowledge` passages, `voice` persona (agent name, locale, preferred voices, rate, pitch) and an optional `rateLimitPerMinute`.
 2. Restart. `loadTenants` validates every file and **fails closed**: a bad file stops startup with the file name and field. `/readyz` shows the counts.
 
-### Console (web UI)
+### Console (web UI): "Switchboard"
 
-`/app/:tenant/chat|inbox|bookings|settings`:
-- A sidebar with a tenant switcher for the 20 businesses (search, grouped by vertical, keyboard navigation).
-- **Test call:** a centered chat with a bottom composer, mic (Web Speech) and word-by-word reveal. Each reply shows its agent and tools, and opens to a per-agent trace timeline.
-- **Conversations:** a list plus a detail view with transcript and trace.
-- **Bookings:** a table of confirmed bookings.
-- **Settings:** business facts, prices, hours, and the voice persona with a live preview.
+`/app/:tenant/live|inbox|bookings|test|settings`. The design is a dense ops console in neutral greys with one teal accent, Inter + JetBrains Mono, and keyboard-first navigation. The design directions it was picked from are in `design/directions/`.
 
-Light and dark themes, responsive layout, reduced-motion support. Screenshots: `client-voice-out/screens/` (outside the repo).
+- **Live calls:** session KPIs and a list of calls. The selected call shows the last turn as **per-agent swim lanes** (triage, specialist, tools, guard, positioned by real span timings), the transcript, and an inspector (booking slots, hand-off, tools, safety checks). *Run sample calls* (`R`) runs four scripted calls into the business at once.
+- **Inbox:** every conversation, with a swim-lane trace under each turn.
+- **Test call:** a scenario runner. The scenarios (booking, facts, question mid-booking, emergency, hand-off, injection, cross-tenant) use the same wording as the release-gate evals. Free-text and mic input are also available. Each turn shows its latency and the time split per agent. *Silence 7 s* exercises the caller-silence budget.
+- **Bookings:** a table of confirmed bookings. **Settings:** the tenant file, rate card or treatments, hours, and the voice persona with preview.
+- **Business switcher:** `⌘K` searches all 20 businesses, grouped by vertical.
+- **Keyboard shortcuts:** `1`–`5` sections, `T` test call, `J`/`K` next and previous call, `Esc` back, `D` dark mode, `/` composer, `?` help.
+- Light and dark themes, responsive down to phone width, reduced motion support, empty, loading and error states.
+
+Everything runs in the browser on the real orchestrator with the mock responder. Timings shown are in-browser and are not phone latency. Screenshots: `client-voice-out/screens-b/` (outside the repo).
 
 ### Voice (free options only)
 
@@ -81,7 +84,8 @@ Light and dark themes, responsive layout, reduced-motion support. Screenshots: `
 | Platform eval, release gate | 25 Nov 2026 | mock responder, in-process, `npm run eval:platform:gate` | **270/270 cases, 670/670 turns** (hotel 140/140, dental 130/130). 15 categories incl. booking, booking change, side question, hand-off, injection, exfiltration, cross-tenant, tool error, emergency. 0 safety failures, 0 writes without confirmation. Gate: ≥95% overall, 100% on safety categories. Per-agent table: written to `metrics/platform-eval.md` by the command (generated, not committed) |
 | Platform eval, real LLM | 25 Nov 2026, 01:25–01:30 AM | Groq free plan `openai/gpt-oss-20b`, cloud box, text only | **270/270, 670/670**, 0 safety failures, 1 guard block (cross-tenant leak caught), 60 model turns, 17,681 tokens (~295 per answer), FAQ agent p50/p95 0.23/401 ms, $0. [`evals/reports/groq-platform-2026-11-25.md`](evals/reports/groq-platform-2026-11-25.md) |
 | Legacy pipeline, real LLM | 24 Nov 2026, 12:30–12:47 PM | Groq free plan `openai/gpt-oss-20b` | Replay 100/100 calls, 138/138 turns, grounded 25/25, 0 HTTP 429s, $0. [`evals/reports/groq-real-2026-11-24.md`](evals/reports/groq-real-2026-11-24.md) |
-| Unit/integration tests | 25 Nov 2026 | `npm test` | 116/116 pass |
+| Unit/integration tests | 25 Nov 2026 | `npm test` | 119/119 pass |
+| Concurrency | 25 Nov 2026, 01:55 | one Node process, HTTP API on localhost, mock LLM, `npm run test:concurrency` | 10 / 20 / 50 simultaneous 9-turn calls across all 20 tenants: 0 errors, 0 timeouts, 0 wrong-tenant answers or bookings, 0 double-booked slots. Turn p50 6.0 / 9.1 / 16.1 ms, p95 38 / 11 / 72 ms, about 455 / 925 / 1,080 turns/s. [`evals/reports/concurrency-2026-11-25.md`](evals/reports/concurrency-2026-11-25.md) |
 | Dental eval gate | 25 Nov 2026 | mock | 30/30 |
 
 Data-derived settings: `MAX_TOKENS_PER_CALL=2500` and `TOKEN_RESERVE_PER_ANSWER=550` come from real token use (average 304, max 544 tokens per model answer across replay n=25 and probe n=90). `CALLER_SILENCE_MS=7000` is a design default and was not measured.

@@ -1,106 +1,153 @@
-import { CalendarCheck, ChevronsUpDown, Inbox, Menu, MessageSquare, Moon, Settings, Sun } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { Link, Navigate, NavLink, useNavigate, useParams } from 'react-router-dom'
+import { Activity, CalendarCheck, Inbox, Menu, Mic, Moon, Search, Settings, Sun } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKE } from 'react'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import './console.css'
-import { ChatView } from './ChatView'
 import { brand, tenantList, tenants } from './engine'
-import { BookingsView, firstTenantId, InboxView, SettingsView } from './OtherViews'
-import { ConsoleState, initialTheme, useConsole, type Theme } from './state'
-import { Avatar } from './ui'
+import { TestCallView } from './TestCallView'
+import { ConsoleState, initialTheme, statusOf, useConsole, type Theme } from './state'
+import { initials } from './ui'
+import { BookingsView, InboxView, LiveView, SettingsView, useSampleRun } from './views'
 
-function TenantSwitcher({ tenantId, section }: { tenantId: string; section: string }) {
-  const [open, setOpen] = useState(false)
+const SECTIONS = [
+  { id: 'live', label: 'Live calls', key: '1', icon: <Activity size={15} /> },
+  { id: 'inbox', label: 'Inbox', key: '2', icon: <Inbox size={15} /> },
+  { id: 'bookings', label: 'Bookings', key: '3', icon: <CalendarCheck size={15} /> },
+  { id: 'test', label: 'Test call', key: '4', icon: <Mic size={15} /> },
+  { id: 'settings', label: 'Settings', key: '5', icon: <Settings size={15} /> },
+] as const
+type Section = (typeof SECTIONS)[number]['id']
+const isTyping = (e: KeyboardEvent) => { const el = e.target as HTMLElement; return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) }
+
+function Palette({ onClose, onPick, section }: { onClose: () => void; onPick: (id: string) => void; section: Section }) {
   const [q, setQ] = useState('')
-  const [active, setActive] = useState(0)
-  const nav = useNavigate()
-  const ref = useRef<HTMLDivElement>(null)
-  const t = tenants.get(tenantId)!
-  const list = useMemo(() => tenantList.filter((x) => brand(x).toLowerCase().includes(q.toLowerCase())), [q])
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [open])
-  const choose = (id: string) => { setOpen(false); setQ(''); nav(`/app/${id}/${section === 'inbox' ? 'inbox' : section}`) }
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') setOpen(false)
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(list.length - 1, a + 1)) }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(0, a - 1)) }
-    if (e.key === 'Enter' && list[active]) { e.preventDefault(); choose(list[active].id) }
+  const [i, setI] = useState(0)
+  const list = useMemo(() => tenantList.filter((t) => `${brand(t)} ${t.vertical} ${t.locations[0]?.address ?? ''}`.toLowerCase().includes(q.toLowerCase())), [q])
+  const onKey = (e: RKE) => {
+    if (e.key === 'Escape') onClose()
+    if (e.key === 'ArrowDown') { e.preventDefault(); setI((x) => Math.min(list.length - 1, x + 1)) }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setI((x) => Math.max(0, x - 1)) }
+    if (e.key === 'Enter' && list[i]) onPick(list[i].id)
   }
   return (
-    <div className="cx-switch" ref={ref} onKeyDown={onKey}>
-      <button type="button" onClick={() => { setOpen((o) => !o); setActive(0) }} aria-haspopup="listbox" aria-expanded={open}>
-        <Avatar t={t} />
-        <span style={{ minWidth: 0, flex: 1 }}><span className="name" style={{ display: 'block' }}>{brand(t)}</span><span className="sub">{t.vertical === 'hotel' ? 'Hotel' : 'Dental clinic'} · Sample</span></span>
-        <ChevronsUpDown size={15} color="var(--text-3)" />
-      </button>
-      {open && (
-        <div className="cx-pop">
-          <label className="sr" htmlFor="cx-tq">Search businesses</label>
-          <input id="cx-tq" autoFocus placeholder="Search 20 businesses…" value={q} onChange={(e) => { setQ(e.target.value); setActive(0) }} />
-          <ul role="listbox" aria-label="Businesses">
-            {list.length === 0 && <li className="cx-note" style={{ padding: 8 }}>No match.</li>}
-            {list.map((x, i) => {
-              const g = x.vertical === 'hotel' ? 'Hotels' : 'Dental clinics'
-              const head = i === 0 || list[i - 1].vertical !== x.vertical ? g : null
-              return (
-                <li key={x.id}>
-                  {head && <div className="group">{head}</div>}
-                  <button type="button" role="option" aria-selected={i === active} onClick={() => choose(x.id)} onMouseEnter={() => setActive(i)}>
-                    <Avatar t={x} /> <span>{brand(x)}</span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
+    <div className="ov" onMouseDown={onClose}>
+      <div className="pal" role="dialog" aria-label="Switch business" onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKey}>
+        <input autoFocus placeholder={`Switch business (20) · opens ${section}`} value={q} onChange={(e) => { setQ(e.target.value); setI(0) }} aria-controls="sb-pal-list" />
+        <ul id="sb-pal-list" role="listbox">
+          {!list.length && <li className="g">No business matches “{q}”.</li>}
+          {list.map((t, j) => (
+            <li key={t.id}>
+              {(j === 0 || list[j - 1].vertical !== t.vertical) && <div className="g">{t.vertical === 'hotel' ? 'Hotels' : 'Dental clinics'}</div>}
+              <button role="option" aria-selected={j === i} onMouseEnter={() => setI(j)} onClick={() => onPick(t.id)}>
+                <span className="sb-tenant" style={{ all: 'unset', display: 'contents' }}><i style={{ width: 20, height: 20, borderRadius: 5, background: 'var(--acc-bg)', color: 'var(--acc-t)', display: 'grid', placeItems: 'center', font: '600 9.5px Inter', fontStyle: 'normal' }}>{initials(t)}</i></span>
+                <span>{brand(t)}</span><em>{t.locations[0]?.address.split(',').at(-1)?.trim()}</em>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   )
 }
 
+function Help({ onClose }: { onClose: () => void }) {
+  const rows: Array<[string, string[]]> = [['Switch business', ['⌘', 'K']], ['Go to section', ['1', '–', '5']], ['Test call', ['T']], ['Run sample calls (Live)', ['R']], ['Next / previous call', ['J', 'K']], ['Back to list', ['Esc']], ['Toggle dark mode', ['D']], ['Focus composer', ['/']], ['This help', ['?']]]
+  return <div className="ov" onMouseDown={onClose}><div className="help" role="dialog" aria-label="Keyboard shortcuts" onMouseDown={(e) => e.stopPropagation()}><h2>Keyboard shortcuts</h2>{rows.map(([l, k]) => <div className="r" key={l}><span>{l}</span><span>{k.map((x, i) => (x === '–' ? <span key={i}> – </span> : <kbd key={i} style={{ marginLeft: 4 }}>{x}</kbd>))}</span></div>)}</div></div>
+}
+
 function Shell() {
-  const { tenantId = '', section = 'chat' } = useParams()
+  const { tenantId = '', section: rawSection = 'live', callId } = useParams()
+  const section = (SECTIONS.some((s) => s.id === rawSection) ? rawSection : 'live') as Section
+  const nav = useNavigate()
   const { calls } = useConsole()
   const [theme, setTheme] = useState<Theme>(initialTheme)
+  const [pal, setPal] = useState(false)
+  const [help, setHelp] = useState(false)
   const [menu, setMenu] = useState(false)
-  useEffect(() => { localStorage.setItem('cx-theme', theme) }, [theme])
-  useEffect(() => { document.title = 'Receptionist console'; setMenu(false) }, [tenantId, section])
-  if (!tenants.has(tenantId)) return <Navigate to={`/app/${firstTenantId}/chat`} replace />
-  const convCount = calls.filter((c) => c.tenantId === tenantId && c.messages.length > 1).length
-  const item = (to: string, icon: React.ReactNode, label: string, count?: number) => (
-    <NavLink to={`/app/${tenantId}/${to}`}>{icon}<span>{label}</span>{count ? <span className="count">{count}</span> : null}</NavLink>
-  )
+  const valid = tenants.has(tenantId)
+  const { run } = useSampleRun(valid ? tenantId : tenantList[0].id)
+  const mine = calls.filter((c) => c.tenantId === tenantId)
+  const refs = useRef({ mine, section, callId, run })
+  useEffect(() => { refs.current = { mine, section, callId, run } })
+  useEffect(() => { localStorage.setItem('sb-theme', theme) }, [theme])
+  useEffect(() => { document.title = `${valid ? brand(tenants.get(tenantId)!) + ' · ' : ''}Front Desk Ops` }, [tenantId, valid])
+  const go = useCallback((s: Section, id?: string) => { setMenu(false); nav(`/app/${tenantId}/${s}${id ? `/${id}` : ''}`) }, [nav, tenantId])
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPal((p) => !p); return }
+      if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return
+      const { mine, section, callId, run } = refs.current
+      const s = SECTIONS.find((x) => x.key === e.key)
+      if (s) return go(s.id)
+      if (e.key === '?') return setHelp((x) => !x)
+      if (e.key === 't') return go('test')
+      if (e.key === 'd') return setTheme((x) => (x === 'dark' ? 'light' : 'dark'))
+      if (e.key === 'r' && section === 'live') return void run()
+      if (e.key === '/') { const el = document.getElementById('sb-input'); if (el) { e.preventDefault(); el.focus() } return }
+      if (e.key === 'Escape') { setHelp(false); setPal(false); if (callId && (section === 'inbox' || section === 'live')) go(section) ; return }
+      if ((e.key === 'j' || e.key === 'k') && (section === 'inbox' || section === 'live')) {
+        const list = section === 'inbox' ? mine.filter((c) => c.turns.length) : mine
+        if (!list.length) return
+        const idx = Math.max(0, list.findIndex((c) => c.id === callId))
+        const next = list[Math.min(list.length - 1, Math.max(0, idx + (e.key === 'j' ? (callId ? 1 : 0) : -1)))]
+        go(section, next.id)
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [go])
+
+  if (!valid) return <Navigate to={`/app/${tenantList[0].id}/live`} replace />
+  const t = tenants.get(tenantId)!
+  const liveCount = mine.filter((c) => statusOf(c) === 'live').length
+  const counts: Partial<Record<Section, number>> = { inbox: mine.filter((c) => c.turns.length).length }
+  const hotels = tenantList.filter((x) => x.vertical === 'hotel'), dental = tenantList.filter((x) => x.vertical === 'dental')
+  const short = (list: typeof tenantList) => { const i = list.findIndex((x) => x.id === tenantId); const base = list.slice(0, 3); return i >= 3 ? [...base.slice(0, 2), list[i]] : base }
+  const title = SECTIONS.find((s) => s.id === section)!.label
+
   return (
-    <div className="cx" data-theme={theme}>
-      <aside className="cx-side" data-open={menu} aria-label="Sidebar">
-        <div className="cx-brand"><span className="cx-mark">R</span>Receptionist</div>
-        <TenantSwitcher tenantId={tenantId} section={section} />
-        <nav className="cx-nav" aria-label="Main">
-          {item('chat', <MessageSquare size={16} />, 'Test call')}
-          {item('inbox', <Inbox size={16} />, 'Conversations', convCount)}
-          {item('bookings', <CalendarCheck size={16} />, 'Bookings')}
-          {item('settings', <Settings size={16} />, 'Settings')}
+    <div className="sb" data-theme={theme}>
+      <aside className="sb-side" data-open={menu} aria-label="Sidebar">
+        <div className="sb-ws"><i>FD</i><span>Front Desk Ops</span><button className="ib" onClick={() => setTheme((x) => (x === 'dark' ? 'light' : 'dark'))} aria-label="Toggle dark mode (D)" title="Dark mode (D)">{theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}</button></div>
+        <button className="sb-search" onClick={() => setPal(true)}><Search size={13} /><span>Switch business…</span><kbd>⌘K</kbd></button>
+        <button className="sb-tenant" onClick={() => setPal(true)} aria-label={`Current business: ${brand(t)}. Switch`}><i>{initials(t)}</i><span style={{ minWidth: 0, flex: 1 }}><b>{brand(t)}</b><small>{t.vertical === 'hotel' ? 'Hotel' : 'Dental clinic'} · {t.locations.length} site{t.locations.length > 1 ? 's' : ''}</small></span></button>
+        <nav aria-label="Main">
+          {SECTIONS.map((s) => (
+            <Link key={s.id} className="sb-nv" to={`/app/${tenantId}/${s.id}`} aria-current={section === s.id ? 'page' : undefined} onClick={() => setMenu(false)} title={`${s.label} (${s.key})`}>
+              {s.icon}<span>{s.label}</span>
+              {s.id === 'live' && liveCount ? <span className="live" aria-label={`${liveCount} live`} /> : counts[s.id] ? <span className="n">{counts[s.id]}</span> : null}
+            </Link>
+          ))}
         </nav>
-        <div className="cx-side-foot">
-          <button className="cx-btn ghost" type="button" onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} aria-label="Toggle dark mode">
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />} {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-          <Link className="cx-btn ghost" to="/dashboard">Original demo</Link>
-          <p className="cx-note">All 20 businesses are fictional SAMPLE data.</p>
+        <div className="sb-grp"><span>Hotels · {hotels.length}</span></div>
+        {short(hotels).map((x) => <Link key={x.id} className="sb-tn" to={`/app/${x.id}/${section}`} aria-current={x.id === tenantId}>{brand(x)}</Link>)}
+        <div className="sb-grp"><span>Dental · {dental.length}</span></div>
+        {short(dental).map((x) => <Link key={x.id} className="sb-tn" to={`/app/${x.id}/${section}`} aria-current={x.id === tenantId}>{brand(x)}</Link>)}
+        <button className="sb-tn" style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--t3)' }} onClick={() => setPal(true)}>All 20 businesses…</button>
+        <div className="sb-foot">
+          <div className="row"><span className="sb-sample">SAMPLE DATA</span><span>20 fictional businesses</span></div>
+          <div className="row"><button className="btn" style={{ height: 24 }} onClick={() => setHelp(true)}>Shortcuts <kbd>?</kbd></button><Link to="/dashboard" style={{ color: 'var(--t3)' }}>Original demo</Link></div>
         </div>
       </aside>
-      <main className="cx-main">
-        <button className="cx-icon-btn cx-menu-btn" style={{ position: 'absolute', top: 10, left: 8, zIndex: 5 }} type="button" onClick={() => setMenu((m) => !m)} aria-label="Open menu"><Menu size={18} /></button>
-        <div className="cx-body" style={{ display: 'flex', flexDirection: 'column' }}>
-          {section === 'chat' && <ChatView tenantId={tenantId} />}
+      <main className="sb-main">
+        <div className="sb-bar">
+          <button className="ib sb-menu" onClick={() => setMenu((m) => !m)} aria-label="Open menu" aria-expanded={menu}><Menu size={16} /></button>
+          <span className="crumb hide-sm">{brand(t)}</span><span className="crumb hide-sm">/</span><h1>{title}</h1>
+          {section === 'live' && liveCount > 0 && <span className="chip acc">● {liveCount} live</span>}
+          <div className="sp" />
+          {section !== 'test' && <button className="btn pri" onClick={() => go('test')}>Test call <kbd>T</kbd></button>}
+        </div>
+        <div className="sb-body">
+          {section === 'live' && <LiveView tenantId={tenantId} />}
           {section === 'inbox' && <InboxView tenantId={tenantId} />}
           {section === 'bookings' && <BookingsView tenantId={tenantId} />}
+          {section === 'test' && <TestCallView tenantId={tenantId} />}
           {section === 'settings' && <SettingsView tenantId={tenantId} />}
         </div>
       </main>
+      {menu && <div className="ov" style={{ zIndex: 14, background: 'rgba(10,10,12,.2)' }} onClick={() => setMenu(false)} />}
+      {pal && <Palette section={section} onClose={() => setPal(false)} onPick={(id) => { setPal(false); nav(`/app/${id}/${section}`) }} />}
+      {help && <Help onClose={() => setHelp(false)} />}
     </div>
   )
 }

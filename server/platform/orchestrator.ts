@@ -160,6 +160,17 @@ export class Platform {
     return this.store.list(tenantId)
   }
 
+  /** Read-only snapshot of a call's booking slots (for the console inspector). Tenant-scoped like every other call API. */
+  callState(tenantId: string, callId: string) {
+    const s = this.session(tenantId, callId)
+    const b = s.booking
+    return {
+      turn: s.turn, escalated: s.escalated, bookingActive: b.active, expecting: b.expecting ?? null,
+      slots: { treatment: b.treatment, location: b.location, date: b.date, time: b.time, checkIn: b.checkIn, checkOut: b.checkOut, guests: b.guests, roomType: b.roomType, name: b.name, phone: b.phone },
+      awaitingConfirmation: Boolean(b.pending), booked: b.done ? { ref: b.done.ref } : null,
+    }
+  }
+
   async turn(tenantId: string, callId: string, rawText: string): Promise<PlatformTurnResult> {
     const t = this.tenant(tenantId)
     const s = this.session(tenantId, callId)
