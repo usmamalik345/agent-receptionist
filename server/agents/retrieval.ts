@@ -22,6 +22,10 @@ const DAY_NAMES: Record<DayKey, string> = {
 }
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
+/** Index-only synonyms so plain caller wording reaches the hours / address passages. */
+const HOURS_TERMS = 'open opening close closing closed hours time times day days today weekday weekend late early'
+const LOCATION_TERMS = 'address where based located location find directions practice phone number call ring'
+
 export function buildPassages(biz: BusinessConfig): Passage[] {
   const out: Passage[] = []
   biz.faqs.forEach((f, i) =>
@@ -37,8 +41,11 @@ export function buildPassages(biz: BusinessConfig): Passage[] {
   )
   for (const loc of biz.locations) {
     const days = (Object.keys(DAY_NAMES) as DayKey[]).map((d) => `${DAY_NAMES[d]} ${loc.hours[d]}`).join(', ')
-    out.push({ id: `hours:${slug(loc.name)}`, source: 'hours', text: `${loc.name} opening hours: ${days}.` })
-    out.push({ id: `location:${slug(loc.name)}`, source: 'location', text: `${loc.name} address: ${loc.address}. Phone ${loc.phone}.` })
+    // Location notes are facts about hours (e.g. "Saturday patients are seen at Uppingham Road"):
+    // without them a model reads "Saturday 9am–12pm phone lines only" as open for appointments.
+    const note = loc.notes ? ` Note: ${loc.notes}` : ''
+    out.push({ id: `hours:${slug(loc.name)}`, source: 'hours', text: `${loc.name} opening hours: ${days}.${note}`, terms: HOURS_TERMS })
+    out.push({ id: `location:${slug(loc.name)}`, source: 'location', text: `${loc.name} address: ${loc.address}. Phone ${loc.phone}.`, terms: LOCATION_TERMS })
   }
   if (biz.emergency?.enabled) {
     out.push({ id: 'emergency', source: 'emergency', text: `${biz.emergency.message} ${biz.emergency.severeAdvice ?? ''}`.trim() })
