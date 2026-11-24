@@ -233,7 +233,7 @@ transcript -> triage agent (intent + risk, rules) -> router (rule | tool | retri
 | `gemini` | free key from aistudio.google.com | `gemini-2.5-flash-lite` | OpenAI-compatible endpoint. The free tier has rate limits. |
 | `openai-compatible` | optional | `llama3.2:3b` | For example local Ollama: `LLM_BASE_URL=http://localhost:11434/v1`. |
 
-Set `LLM_MODEL`, `LLM_SMALL_MODEL` (fallback tier), `LLM_BASE_URL` and `LLM_TIMEOUT_MS` as needed. If `groq`/`gemini` has no `LLM_API_KEY`, the client falls back to mock and says so. Keys come from env only and are never committed.
+Set `LLM_MODEL`, `LLM_SMALL_MODEL` (fallback tier; Groq default `allam-2-7b`, always a different, smaller model than the primary, run with `LLM_SMALL_CONTEXT_PASSAGES`=1 passage and `LLM_SMALL_MAX_TOKENS`=80), `LLM_BASE_URL` and `LLM_TIMEOUT_MS` as needed. If `groq`/`gemini` has no `LLM_API_KEY`, the client falls back to mock and says so. Keys come from env only and are never committed.
 
 ### Cache (`server/cache.ts`)
 Stateless answers (retrieval/FAQ turns) are cached after the guard passes. The key is `sha256(normalized question)` + business + `POLICY_VERSION`, with a TTL of `ANSWER_CACHE_TTL_MS`. The default backend is an in-memory LRU (`CACHE_MAX_ENTRIES`). Set `REDIS_URL` to use Redis through a small built-in RESP client (no extra dependency); if Redis is down, the cache falls back to the LRU. Hit/miss counters feed the replay report. Slot-filling replies are never cached.

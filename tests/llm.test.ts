@@ -55,7 +55,7 @@ test('groq request: endpoint, auth header, model, max_tokens; usage parsed', asy
   }
   const c = loadLlmClient({ LLM_PROVIDER: 'groq', LLM_API_KEY: 'test-key-not-real' }, fakeFetch as never)
   assert.equal(c.provider, 'groq')
-  const r = await c.complete({ messages: [{ role: 'user', content: 'hello' }], maxTokens: 50, tier: 'small' })
+  const r = await c.complete({ messages: [{ role: 'user', content: 'hello' }], maxTokens: 50, tier: 'primary' })
   assert.equal(calls[0].url, 'https://api.groq.com/openai/v1/chat/completions')
   assert.equal(calls[0].init.headers.authorization, 'Bearer test-key-not-real')
   const body = JSON.parse(calls[0].init.body)

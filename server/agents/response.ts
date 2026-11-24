@@ -28,8 +28,14 @@ export interface ResponseAgentOutput {
   tool?: 'get_hours'
 }
 
-export function buildResponseMessages(business: string, question: string, passages: ScoredPassage[], shortContext = false) {
-  const ctx = (shortContext ? passages.slice(0, 1) : passages).map((p) => `[${p.id}] ${p.text}`).join('\n')
+/** Fallback tier settings (env): fewer passages and fewer tokens so the small model answers fast. */
+export const smallTierConfig = (env: Record<string, string | undefined> = process.env) => ({
+  contextPassages: Math.max(1, Number(env.LLM_SMALL_CONTEXT_PASSAGES || 1) || 1),
+  maxTokens: Math.max(16, Number(env.LLM_SMALL_MAX_TOKENS || 80) || 80),
+})
+
+export function buildResponseMessages(business: string, question: string, passages: ScoredPassage[], shortContext = false, shortPassages = 1) {
+  const ctx = (shortContext ? passages.slice(0, shortPassages) : passages).map((p) => `[${p.id}] ${p.text}`).join('\n')
   return [
     { role: 'system' as const, content: RESPONSE_SYSTEM_PROMPT.replace('{business}', business) },
     { role: 'user' as const, content: `CONTEXT:\n${ctx || '(none)'}\n\nCALLER: ${question}` },
@@ -89,10 +95,13 @@ export async function runResponseAgent(
       }
     }
   }
+  // The small (fallback) tier always runs with the short context and a smaller token budget.
+  const small = (input.tier ?? 'primary') === 'small'
+  const sc = smallTierConfig()
   const res = await llm.complete({
-    messages: buildResponseMessages(input.business, input.question, input.passages, input.shortContext),
+    messages: buildResponseMessages(input.business, input.question, input.passages, input.shortContext || small, sc.contextPassages),
     tier: input.tier ?? 'primary',
-    maxTokens: input.maxTokens ?? 120,
+    maxTokens: input.maxTokens ?? (small ? sc.maxTokens : 120),
     signal: input.signal,
   })
   const { spoken, citations } = extractCitations(res.text, new Set(input.passages.map((p) => p.id)))

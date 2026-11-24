@@ -55,7 +55,8 @@ export const estimateTokenCount = (s: string): number => Math.ceil(s.length / 4)
 
 const DEFAULTS: Record<Exclude<LlmProvider, 'mock'>, { baseUrl: string; model: string; small: string }> = {
   // https://console.groq.com/docs/models (checked 24 Nov 2026: llama-3.x moved to enterprise; gpt-oss is self-serve)
-  groq: { baseUrl: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-20b', small: 'openai/gpt-oss-20b' },
+  // small = fallback tier. allam-2-7b is the only chat model on the free key smaller than gpt-oss-20b (GET /models, 25 Nov 2026).
+  groq: { baseUrl: 'https://api.groq.com/openai/v1', model: 'openai/gpt-oss-20b', small: 'allam-2-7b' },
   // https://ai.google.dev/gemini-api/docs/openai
   gemini: { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash-lite', small: 'gemini-2.5-flash-lite' },
   // e.g. Ollama: http://localhost:11434/v1 (free, local)
@@ -298,7 +299,7 @@ export function loadLlmClient(env: Record<string, string | undefined> = process.
     baseUrl: env.LLM_BASE_URL || d.baseUrl,
     apiKey,
     model: env.LLM_MODEL || d.model,
-    smallModel: env.LLM_SMALL_MODEL || env.LLM_MODEL || d.small,
+    smallModel: env.LLM_SMALL_MODEL || d.small,
     timeoutMs: Number(env.LLM_TIMEOUT_MS || 8000) || 8000,
     stream: env.LLM_STREAM !== '0',
     reasoningEffort: env.LLM_REASONING_EFFORT || 'low',
