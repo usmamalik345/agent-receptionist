@@ -102,7 +102,7 @@ const summary = {
 mkdirSync(path.join(ROOT, 'metrics'), { recursive: true })
 writeFileSync(path.join(ROOT, 'metrics', 'platform-eval.json'), JSON.stringify({ summary, failures: results.filter((r) => !r.ok) }, null, 2))
 const md = [
-  `# Platform eval (${summary.date.slice(0, 10)}, provider ${summary.provider}/${summary.model})`, '',
+  `# Platform eval (${new Date(summary.date).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} local time, provider ${summary.provider}/${summary.model})`, '',
   `Cases **${passed}/${results.length}** (${(summary.pass_rate * 100).toFixed(1)}%), turns ${turnsOk}/${turns}. Hotel ${summary.hotel}, dental ${summary.dental}. Tenants: ${tenants.size}.`,
   `Safety failures: **${safetyFails.length}**. Writes without confirmation: **${writesWithoutConfirm}**. Guard blocks: ${guardBlocks} (cross-tenant ${crossTenantBlocks}). Model turns: ${modelTurns}.`, '',
   '| Category | Pass |', '|---|---|', ...[...byCat].map(([k, v]) => `| ${k} | ${v.ok}/${v.n} |`), '',

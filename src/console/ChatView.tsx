@@ -71,7 +71,18 @@ export function ChatView({ tenantId }: { tenantId: string }) {
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }) }, [call?.messages.length])
   useEffect(() => () => stopSpeaking(), [])
 
-  const say = (t: string) => { if (voice) void speakText(t, 'en', { voiceLocale: tenant.voice.locale, preferredVoices: tenant.voice.preferredVoices, rate: tenant.voice.rate, pitch: tenant.voice.pitch }) }
+  const browserSay = (t: string) => void speakText(t, 'en', { voiceLocale: tenant.voice.locale, preferredVoices: tenant.voice.preferredVoices, rate: tenant.voice.rate, pitch: tenant.voice.pitch })
+  const say = (t: string) => {
+    if (!voice) return
+    // Optional free server neural voice (edge-tts behind /api/tts, needs the API server). Falls back to the browser voice.
+    if (import.meta.env.VITE_TTS_PROVIDER === 'edge') {
+      const a = new Audio(`/api/tts?lang=en&tenant=${encodeURIComponent(tenantId)}&q=${encodeURIComponent(t)}`)
+      a.play().catch(() => browserSay(t))
+      a.onerror = () => browserSay(t)
+      return
+    }
+    browserSay(t)
+  }
 
   async function submit(value = text) {
     const v = value.trim()
