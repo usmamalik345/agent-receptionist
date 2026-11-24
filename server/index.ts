@@ -41,6 +41,8 @@ const {
   WA_PROVIDER = 'auto', // auto | callmebot | meta | twilio
 } = process.env
 
+const platformTenants = loadTenants().tenants
+
 const app = express()
 app.use(cors())
 app.use(express.json())
@@ -447,7 +449,9 @@ app.get('/api/tts', async (req, res) => {
     return
   }
 
-  const voice = lang === 'ar' ? AR_VOICE : EN_VOICE
+  // Per-tenant persona: first preferred voice that is an edge-tts neural id (e.g. en-GB-SoniaNeural)
+  const tenantVoice = req.query.tenant ? platformTenants.get(String(req.query.tenant))?.voice.preferredVoices.find((v) => /^[a-z]{2}-[A-Z]{2}-\w+Neural$/.test(v)) : undefined
+  const voice = lang === 'ar' ? AR_VOICE : tenantVoice || EN_VOICE
   const key = createHash('sha1').update(`${voice}|${text}`).digest('hex')
   const outFile = path.join(TTS_CACHE_DIR, `${key}.mp3`)
 
@@ -497,8 +501,8 @@ mountAgentRoutes(app)
 /** Multi-tenant platform API (20 SAMPLE tenants by default; see server/platform/) */
 {
   const logger = createLogger()
-  const { tenants, errors } = loadTenants()
-  mountPlatformRoutes(app, new Platform({ tenants, logger }), { logger, tenantErrors: errors })
+  const { errors } = loadTenants()
+  mountPlatformRoutes(app, new Platform({ tenants: platformTenants, logger }), { logger, tenantErrors: errors })
 }
 
 app.listen(PORT, () => {

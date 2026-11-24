@@ -3,6 +3,7 @@ import { getActiveBusiness } from './businessRuntime'
 import { sanitizeForSpeech } from './speakSanitize'
 import { markFirstAudio } from './turnTelemetry'
 import type { Language } from './types'
+import { naturalRate, pickBestVoice, speechChunks } from './voicePick'
 
 const GREETING_AUDIO: Partial<Record<Language, string>> = {
   en: '/audio/greeting-en.wav',
@@ -146,6 +147,10 @@ export type SpeakOptions = {
   retry?: boolean
   /** Override BCP-47 voice locale (e.g. en-GB for dental) */
   voiceLocale?: string
+  /** Per-tenant persona: voice names best first, rate and pitch (0.5-1.5) */
+  preferredVoices?: string[]
+  rate?: number
+  pitch?: number
 }
 
 let voiceWait: Promise<SpeechSynthesisVoice[]> | null = null
@@ -209,6 +214,7 @@ function pickVoice(
   language: Language,
   voices: SpeechSynthesisVoice[],
   voiceLocale?: string,
+  preferredVoices: string[] = [],
 ): SpeechSynthesisVoice | null {
   const prefer = resolveVoiceLocale(language, voiceLocale) || (language === 'ar' ? 'ar-SA' : 'en-US')
   if (language === 'ar') {
@@ -220,6 +226,9 @@ function pickVoice(
       null
     )
   }
+  // Most natural installed voice first (Edge "Online (Natural)", Google, Premium/Enhanced), see voicePick.ts
+  const best = pickBestVoice(voices, prefer, preferredVoices)
+  if (best) return best
   return (
     voices.find((v) => v.lang.toLowerCase() === prefer.toLowerCase()) ||
     voices.find((v) => v.lang.toLowerCase().startsWith(prefer.slice(0, 2).toLowerCase() + '-')) ||
@@ -241,6 +250,7 @@ function speakOnce(
   language: Language,
   voices: SpeechSynthesisVoice[],
   voiceLocale?: string,
+  persona: { preferredVoices?: string[]; rate?: number; pitch?: number } = {},
 ): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false
@@ -258,11 +268,11 @@ function speakOnce(
 
     const utter = new SpeechSynthesisUtterance(text)
     utter.lang = voiceLocale || (language === 'ar' ? 'ar-SA' : 'en-US')
-    utter.rate = language === 'ar' ? 0.9 : 0.95
-    utter.pitch = 1
-    utter.volume = 1
-    const preferred = pickVoice(language, voices, voiceLocale)
+    const preferred = pickVoice(language, voices, voiceLocale, persona.preferredVoices)
     if (preferred) utter.voice = preferred
+    utter.rate = language === 'ar' ? 0.9 : naturalRate(preferred, persona.rate ?? 1)
+    utter.pitch = persona.pitch ?? 1
+    utter.volume = 1
 
     utter.onstart = () => {
       started = true
@@ -439,7 +449,21 @@ export async function speakText(
     /* ignore */
   }
 
-  const heard = await speakOnce(synth, clean, language, voices, voiceLocale)
+  const persona = { preferredVoices: options.preferredVoices, rate: options.rate, pitch: options.pitch }
+  let heard: boolean
+  if (language === 'ar') heard = await speakOnce(synth, clean, language, voices, voiceLocale, persona)
+  else {
+    // Sentence by sentence with a short breath between: sounds less like one long robotic read-out,
+    // and the first sentence starts sooner.
+    heard = false
+    const parts = speechChunks(clean)
+    for (const [i, part] of parts.entries()) {
+      const ok = await speakOnce(synth, part, language, voices, voiceLocale, persona)
+      heard = heard || ok
+      if (!ok && i === 0) break
+      if (i < parts.length - 1) await new Promise((r) => setTimeout(r, 140))
+    }
+  }
 
   // Retry ONLY if first attempt never started (Chrome silent queue bug) — not after normal onend
   if (options.retry && !heard) {
@@ -450,7 +474,7 @@ export async function speakText(
       /* ignore */
     }
     // Second try: drop voice pick constraints if Arabic had no matching voice
-    await speakOnce(synth, clean, language, voices, language === 'ar' ? 'ar-SA' : voiceLocale)
+    await speakOnce(synth, clean, language, voices, language === 'ar' ? 'ar-SA' : voiceLocale, persona)
   }
 }
 

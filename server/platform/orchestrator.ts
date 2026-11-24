@@ -256,7 +256,7 @@ export class Platform {
     }
   }
 
-  private async humanHandoff(t: Tenant, ctx: ToolContext, tools: ToolCallRecord[], reason: string): Promise<AgentReply> {
+  private async humanHandoff(_t: Tenant, ctx: ToolContext, tools: ToolCallRecord[], reason: string): Promise<AgentReply> {
     const r = await callTool('orchestrator', 'handoff_to_human', { reason }, ctx)
     tools.push(r.record)
     return { type: 'reply', agent: 'orchestrator', text: HUMAN_HANDOFF_TEXT, source: 'template', grounding: [], citations: [], model: null, tokens: null, decision: `handoff:${reason}` }
