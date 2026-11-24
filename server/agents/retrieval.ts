@@ -51,7 +51,7 @@ export function buildPassages(biz: BusinessConfig): Passage[] {
     out.push({ id: 'emergency', source: 'emergency', text: `${biz.emergency.message} ${biz.emergency.severeAdvice ?? ''}`.trim() })
   }
   if (biz.about) out.push({ id: 'about', source: 'about', text: biz.about })
-  if (biz.afterHoursMessage) out.push({ id: 'after-hours', source: 'after_hours', text: biz.afterHoursMessage })
+  if (biz.afterHoursMessage) out.push({ id: 'after-hours', source: 'after_hours', text: `Only when the practice is closed (outside opening hours): ${biz.afterHoursMessage}` })
   return out
 }
 
