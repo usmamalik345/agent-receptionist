@@ -1,0 +1,97 @@
+{
+  "id": "midtown-loft-hotel",
+  "vertical": "hotel",
+  "name": "Midtown Loft Hotel (SAMPLE)",
+  "sample": true,
+  "timezone": "America/New_York",
+  "currency": "USD",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Mia",
+    "locale": "en-US",
+    "preferredVoices": [
+      "Microsoft Aria Online (Natural) - English (United States)",
+      "Microsoft Jenny Online (Natural) - English (United States)",
+      "Google US English",
+      "en-US-AriaNeural"
+    ],
+    "rate": 1,
+    "pitch": 1,
+    "style": "upbeat"
+  },
+  "locations": [
+    {
+      "name": "Midtown Loft Hotel",
+      "address": "18 West 44th Street, New York",
+      "phone": "(212) 555-0118",
+      "hours": {
+        "mon": "24 hours",
+        "tue": "24 hours",
+        "wed": "24 hours",
+        "thu": "24 hours",
+        "fri": "24 hours",
+        "sat": "24 hours",
+        "sun": "24 hours"
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Is there parking?",
+      "a": "There is no on-site parking; the nearest public car park is a five-minute walk.",
+      "keywords": "parking park car garage"
+    },
+    {
+      "q": "Do you allow pets?",
+      "a": "Sorry, pets are not allowed, except assistance dogs.",
+      "keywords": "pet pets dog dogs cat"
+    },
+    {
+      "q": "Is breakfast included?",
+      "a": "Breakfast is $21 per person per day.",
+      "keywords": "breakfast meal food dining restaurant"
+    },
+    {
+      "q": "Do you have wifi?",
+      "a": "Yes, free wifi is available throughout the hotel.",
+      "keywords": "wifi internet wi-fi"
+    },
+    {
+      "q": "How far is the station?",
+      "a": "The main New York station is about 5 minutes away by taxi.",
+      "keywords": "station train airport taxi transport directions"
+    }
+  ],
+  "hotel": {
+    "checkInTime": "3pm",
+    "checkOutTime": "12pm",
+    "cancellationPolicy": "Free cancellation up to 24 hours before arrival; after that the first night is charged.",
+    "rooms": [
+      {
+        "type": "Standard Double",
+        "ratePerNight": 133,
+        "maxGuests": 2,
+        "count": 3
+      },
+      {
+        "type": "Twin",
+        "ratePerNight": 147,
+        "maxGuests": 2,
+        "count": 2
+      },
+      {
+        "type": "Family Room",
+        "ratePerNight": 210,
+        "maxGuests": 4,
+        "count": 1
+      },
+      {
+        "type": "Suite",
+        "ratePerNight": 308,
+        "maxGuests": 3,
+        "count": 1
+      }
+    ]
+  }
+}

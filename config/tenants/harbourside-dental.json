@@ -1,0 +1,105 @@
+{
+  "id": "harbourside-dental",
+  "vertical": "dental",
+  "name": "Harbourside Dental (SAMPLE)",
+  "sample": true,
+  "timezone": "Europe/London",
+  "currency": "GBP",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Ava",
+    "locale": "en-GB",
+    "preferredVoices": [
+      "Microsoft Sonia Online (Natural) - English (United Kingdom)",
+      "Microsoft Libby Online (Natural) - English (United Kingdom)",
+      "Google UK English Female",
+      "en-GB-SoniaNeural"
+    ],
+    "rate": 0.98,
+    "pitch": 1,
+    "style": "warm"
+  },
+  "locations": [
+    {
+      "name": "Bristol Central",
+      "address": "24 Harbour Road, Bristol",
+      "phone": "0117 496 0145",
+      "hours": {
+        "mon": "8:30am–5pm",
+        "tue": "8:30am–7pm",
+        "wed": "8:30am–5pm",
+        "thu": "9am–7pm",
+        "fri": "9am–4pm",
+        "sat": "9am–1pm",
+        "sun": "closed"
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Are you taking new patients?",
+      "a": "Yes, we are taking new NHS and private patients.",
+      "keywords": "new patient patients register registration join nhs"
+    },
+    {
+      "q": "Do you offer payment plans?",
+      "a": "We take card and cash; payment is due on the day of treatment.",
+      "keywords": "payment pay plan finance card cash monthly"
+    },
+    {
+      "q": "Is there parking?",
+      "a": "There is no private parking; the nearest pay-and-display is on the next street.",
+      "keywords": "parking park car"
+    },
+    {
+      "q": "Do you help nervous patients?",
+      "a": "Yes, tell us when you book and we will give you a longer appointment and go at your pace.",
+      "keywords": "nervous anxious scared afraid fear"
+    },
+    {
+      "q": "Is the practice wheelchair accessible?",
+      "a": "We have one ground-floor surgery; please mention it when booking.",
+      "keywords": "wheelchair accessible access disabled step"
+    }
+  ],
+  "dental": {
+    "slotMinutes": 30,
+    "treatments": [
+      {
+        "name": "Check-up",
+        "price": 66,
+        "durationMin": 30
+      },
+      {
+        "name": "Scale and polish",
+        "price": 78,
+        "durationMin": 30
+      },
+      {
+        "name": "Filling",
+        "price": 144,
+        "durationMin": 60
+      },
+      {
+        "name": "Teeth whitening",
+        "price": 360,
+        "durationMin": 60
+      },
+      {
+        "name": "Emergency appointment",
+        "price": 90,
+        "durationMin": 30
+      },
+      {
+        "name": "Root canal",
+        "price": null,
+        "durationMin": 90
+      }
+    ],
+    "emergency": {
+      "message": "We keep same-day emergency slots for patients in pain; the team will confirm the time.",
+      "severeAdvice": "If you have swelling that affects your breathing or swallowing, call 999 or go to A&E now."
+    }
+  }
+}

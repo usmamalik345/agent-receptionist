@@ -1,0 +1,97 @@
+{
+  "id": "riverside-lodge",
+  "vertical": "hotel",
+  "name": "Riverside Lodge (SAMPLE)",
+  "sample": true,
+  "timezone": "Europe/London",
+  "currency": "GBP",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Oliver",
+    "locale": "en-GB",
+    "preferredVoices": [
+      "Microsoft Ryan Online (Natural) - English (United Kingdom)",
+      "Microsoft Thomas Online (Natural) - English (United Kingdom)",
+      "Google UK English Male",
+      "en-GB-RyanNeural"
+    ],
+    "rate": 1,
+    "pitch": 1,
+    "style": "warm"
+  },
+  "locations": [
+    {
+      "name": "Riverside Lodge",
+      "address": "13 River Walk, Leicester",
+      "phone": "0116 496 0130",
+      "hours": {
+        "mon": "24 hours",
+        "tue": "24 hours",
+        "wed": "24 hours",
+        "thu": "24 hours",
+        "fri": "24 hours",
+        "sat": "24 hours",
+        "sun": "24 hours"
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Is there parking?",
+      "a": "Yes, on-site parking is free for guests.",
+      "keywords": "parking park car garage"
+    },
+    {
+      "q": "Do you allow pets?",
+      "a": "Yes, dogs are welcome in standard rooms for a small fee confirmed at check-in.",
+      "keywords": "pet pets dog dogs cat"
+    },
+    {
+      "q": "Is breakfast included?",
+      "a": "Breakfast is included with every room.",
+      "keywords": "breakfast meal food dining restaurant"
+    },
+    {
+      "q": "Do you have wifi?",
+      "a": "Yes, free wifi is available throughout the hotel.",
+      "keywords": "wifi internet wi-fi"
+    },
+    {
+      "q": "How far is the station?",
+      "a": "The main Leicester station is about 20 minutes away by taxi.",
+      "keywords": "station train airport taxi transport directions"
+    }
+  ],
+  "hotel": {
+    "checkInTime": "2pm",
+    "checkOutTime": "11am",
+    "cancellationPolicy": "Free cancellation up to 48 hours before arrival; after that the first night is charged.",
+    "rooms": [
+      {
+        "type": "Standard Double",
+        "ratePerNight": 76,
+        "maxGuests": 2,
+        "count": 3
+      },
+      {
+        "type": "Twin",
+        "ratePerNight": 84,
+        "maxGuests": 2,
+        "count": 2
+      },
+      {
+        "type": "Family Room",
+        "ratePerNight": 120,
+        "maxGuests": 4,
+        "count": 1
+      },
+      {
+        "type": "Suite",
+        "ratePerNight": 176,
+        "maxGuests": 3,
+        "count": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "id": "parkside-dental-care",
+  "vertical": "dental",
+  "name": "Parkside Dental Care (SAMPLE)",
+  "sample": true,
+  "timezone": "Europe/London",
+  "currency": "GBP",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Grace",
+    "locale": "en-GB",
+    "preferredVoices": [
+      "Microsoft Ryan Online (Natural) - English (United Kingdom)",
+      "Microsoft Thomas Online (Natural) - English (United Kingdom)",
+      "Google UK English Male",
+      "en-GB-RyanNeural"
+    ],
+    "rate": 0.98,
+    "pitch": 1,
+    "style": "warm"
+  },
+  "locations": [
+    {
+      "name": "Sheffield Central",
+      "address": "21 Park Road, Sheffield",
+      "phone": "0114 496 0115",
+      "hours": {
+        "mon": "8:30am–5pm",
+        "tue": "8:30am–5pm",
+        "wed": "8:30am–5pm",
+        "thu": "9am–5pm",
+        "fri": "9am–4pm",
+        "sat": "closed",
+        "sun": "closed"
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Are you taking new patients?",
+      "a": "Yes, we are taking new NHS and private patients.",
+      "keywords": "new patient patients register registration join nhs"
+    },
+    {
+      "q": "Do you offer payment plans?",
+      "a": "Yes, treatment over £500 can be spread over 12 months interest-free.",
+      "keywords": "payment pay plan finance card cash monthly"
+    },
+    {
+      "q": "Is there parking?",
+      "a": "There is free parking behind the practice.",
+      "keywords": "parking park car"
+    },
+    {
+      "q": "Do you help nervous patients?",
+      "a": "Yes, tell us when you book and we will give you a longer appointment and go at your pace.",
+      "keywords": "nervous anxious scared afraid fear"
+    },
+    {
+      "q": "Is the practice wheelchair accessible?",
+      "a": "We have one ground-floor surgery; please mention it when booking.",
+      "keywords": "wheelchair accessible access disabled step"
+    }
+  ],
+  "dental": {
+    "slotMinutes": 30,
+    "treatments": [
+      {
+        "name": "Check-up",
+        "price": 50,
+        "durationMin": 30
+      },
+      {
+        "name": "Scale and polish",
+        "price": 59,
+        "durationMin": 30
+      },
+      {
+        "name": "Filling",
+        "price": 108,
+        "durationMin": 60
+      },
+      {
+        "name": "Teeth whitening",
+        "price": 270,
+        "durationMin": 60
+      },
+      {
+        "name": "Emergency appointment",
+        "price": 68,
+        "durationMin": 30
+      },
+      {
+        "name": "Root canal",
+        "price": null,
+        "durationMin": 90
+      }
+    ],
+    "emergency": {
+      "message": "We keep same-day emergency slots for patients in pain; the team will confirm the time.",
+      "severeAdvice": "If you have swelling that affects your breathing or swallowing, call 999 or go to A&E now."
+    }
+  }
+}

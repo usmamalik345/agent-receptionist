@@ -1,0 +1,97 @@
+{
+  "id": "hudson-park-hotel",
+  "vertical": "hotel",
+  "name": "Hudson Park Hotel (SAMPLE)",
+  "sample": true,
+  "timezone": "America/New_York",
+  "currency": "USD",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Ava",
+    "locale": "en-US",
+    "preferredVoices": [
+      "Microsoft Aria Online (Natural) - English (United States)",
+      "Microsoft Jenny Online (Natural) - English (United States)",
+      "Google US English",
+      "en-US-AriaNeural"
+    ],
+    "rate": 1,
+    "pitch": 1,
+    "style": "calm"
+  },
+  "locations": [
+    {
+      "name": "Hudson Park Hotel",
+      "address": "17 Hudson Street, New York",
+      "phone": "(212) 555-0117",
+      "hours": {
+        "mon": "24 hours",
+        "tue": "24 hours",
+        "wed": "24 hours",
+        "thu": "24 hours",
+        "fri": "24 hours",
+        "sat": "24 hours",
+        "sun": "24 hours"
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Is there parking?",
+      "a": "Yes, parking is $19 per night, booked at reception.",
+      "keywords": "parking park car garage"
+    },
+    {
+      "q": "Do you allow pets?",
+      "a": "Yes, dogs are welcome in standard rooms for a small fee confirmed at check-in.",
+      "keywords": "pet pets dog dogs cat"
+    },
+    {
+      "q": "Is breakfast included?",
+      "a": "Breakfast is included with every room.",
+      "keywords": "breakfast meal food dining restaurant"
+    },
+    {
+      "q": "Do you have wifi?",
+      "a": "Yes, free wifi is available throughout the hotel.",
+      "keywords": "wifi internet wi-fi"
+    },
+    {
+      "q": "How far is the station?",
+      "a": "The main New York station is about 20 minutes away by taxi.",
+      "keywords": "station train airport taxi transport directions"
+    }
+  ],
+  "hotel": {
+    "checkInTime": "2pm",
+    "checkOutTime": "11am",
+    "cancellationPolicy": "Free cancellation up to 48 hours before arrival; after that the first night is charged.",
+    "rooms": [
+      {
+        "type": "Standard Double",
+        "ratePerNight": 152,
+        "maxGuests": 2,
+        "count": 3
+      },
+      {
+        "type": "Twin",
+        "ratePerNight": 168,
+        "maxGuests": 2,
+        "count": 2
+      },
+      {
+        "type": "Family Room",
+        "ratePerNight": 240,
+        "maxGuests": 4,
+        "count": 1
+      },
+      {
+        "type": "Suite",
+        "ratePerNight": 352,
+        "maxGuests": 3,
+        "count": 1
+      }
+    ]
+  }
+}

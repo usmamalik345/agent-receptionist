@@ -1,0 +1,97 @@
+{
+  "id": "clifton-grand",
+  "vertical": "hotel",
+  "name": "Clifton Grand Hotel (SAMPLE)",
+  "sample": true,
+  "timezone": "Europe/London",
+  "currency": "GBP",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Grace",
+    "locale": "en-GB",
+    "preferredVoices": [
+      "Microsoft Sonia Online (Natural) - English (United Kingdom)",
+      "Microsoft Libby Online (Natural) - English (United Kingdom)",
+      "Google UK English Female",
+      "en-GB-SoniaNeural"
+    ],
+    "rate": 1,
+    "pitch": 1,
+    "style": "calm"
+  },
+  "locations": [
+    {
+      "name": "Clifton Grand Hotel",
+      "address": "14 Park Row, Bristol",
+      "phone": "0117 496 0140",
+      "hours": {
+        "mon": "24 hours",
+        "tue": "24 hours",
+        "wed": "24 hours",
+        "thu": "24 hours",
+        "fri": "24 hours",
+        "sat": "24 hours",
+        "sun": "24 hours"
+      }
+    }
+  ],
+  "faqs": [
+    {
+      "q": "Is there parking?",
+      "a": "Yes, parking is £16 per night, booked at reception.",
+      "keywords": "parking park car garage"
+    },
+    {
+      "q": "Do you allow pets?",
+      "a": "Sorry, pets are not allowed, except assistance dogs.",
+      "keywords": "pet pets dog dogs cat"
+    },
+    {
+      "q": "Is breakfast included?",
+      "a": "Breakfast is £20 per person per day.",
+      "keywords": "breakfast meal food dining restaurant"
+    },
+    {
+      "q": "Do you have wifi?",
+      "a": "Yes, free wifi is available throughout the hotel.",
+      "keywords": "wifi internet wi-fi"
+    },
+    {
+      "q": "How far is the station?",
+      "a": "The main Bristol station is about 5 minutes away by taxi.",
+      "keywords": "station train airport taxi transport directions"
+    }
+  ],
+  "hotel": {
+    "checkInTime": "3pm",
+    "checkOutTime": "12pm",
+    "cancellationPolicy": "Free cancellation up to 24 hours before arrival; after that the first night is charged.",
+    "rooms": [
+      {
+        "type": "Standard Double",
+        "ratePerNight": 124,
+        "maxGuests": 2,
+        "count": 3
+      },
+      {
+        "type": "Twin",
+        "ratePerNight": 137,
+        "maxGuests": 2,
+        "count": 2
+      },
+      {
+        "type": "Family Room",
+        "ratePerNight": 195,
+        "maxGuests": 4,
+        "count": 1
+      },
+      {
+        "type": "Suite",
+        "ratePerNight": 286,
+        "maxGuests": 3,
+        "count": 1
+      }
+    ]
+  }
+}
