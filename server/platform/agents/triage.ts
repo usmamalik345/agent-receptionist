@@ -49,6 +49,10 @@ export function triage(i: TriageInput): TriageResult {
   if (i.vertical === 'hotel' && POLICY.test(t) && !BOOK_HOTEL.test(t)) return { intent: 'policy', to: 'faq', confidence: 0.85, rule: 'policy' }
   const book = i.vertical === 'dental' ? BOOK_DENTAL : BOOK_HOTEL
   if (book.test(t)) return { intent: 'booking', to: 'booking', confidence: 0.9, rule: 'booking_request' }
+  // A side question during a booking ("is there parking?") goes to the FAQ agent; the booking resumes after.
+  const question = /\?\s*$|^(sorry,?\s*)?(do|does|is|are|can|what|where|when|how|which|who)\b/i.test(t)
+  const slotSignal = /\d|\b(today|tomorrow|morning|afternoon|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|night|guest|adult|room|double|twin|suite|first|second|that one|okay|ok|fine)\b/i.test(t)
+  if (i.bookingActive && question && !slotSignal) return { intent: 'faq', to: 'faq', confidence: 0.7, rule: 'side_question' }
   if (i.bookingActive) return { intent: 'booking', to: 'booking', confidence: 0.8, rule: 'booking_slot_fill' }
   if (/\?|^(do|does|is|are|can|what|where|when|how|which|who)\b/i.test(t)) return { intent: 'faq', to: 'faq', confidence: 0.7, rule: 'question' }
   return { intent: 'unknown', to: 'faq', confidence: 0.4, rule: 'no_rule' }

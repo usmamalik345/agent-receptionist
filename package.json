@@ -26,7 +26,13 @@
     "replay:faults": "tsx scripts/replay-harness.mts --faults",
     "replay:fixtures": "tsx scripts/gen-replay-fixtures.mts",
     "replay:diff": "tsx scripts/decision-diff.mts",
-    "ci": "npm run build && npm run lint && npm run typecheck:server && npm test && npm run eval:gate && npm run replay:gate && npm run replay:diff -- --fail-on-change && npm run report:failures -- --require-coverage"
+    "ci": "npm run build && npm run lint && npm run typecheck:server && npm test && npm run eval:gate && npm run eval:platform:gate && npm run replay:gate && npm run replay:diff -- --fail-on-change && npm run report:failures -- --require-coverage",
+    "start": "tsx server/platform/main.ts",
+    "dev:platform": "tsx watch server/platform/main.ts",
+    "tenants:gen": "tsx scripts/gen-sample-tenants.mts",
+    "eval:platform:gen": "tsx scripts/gen-platform-evals.mts",
+    "eval:platform": "tsx scripts/platform-eval.mts",
+    "eval:platform:gate": "tsx scripts/platform-eval.mts --gate"
   },
   "dependencies": {
     "cors": "^2.8.5",

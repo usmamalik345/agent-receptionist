@@ -210,10 +210,6 @@ export class Platform {
         if (faq.decision === 'no_grounded_passage') s.failedClarifications++
         else s.failedClarifications = 0
         if (s.failedClarifications >= 2) reply = await this.humanHandoff(t, ctx, tools, 'repeated_clarification_failure')
-        else if (s.booking.active && faq.source !== 'llm' && tr.intent !== 'goodbye') {
-          const next = resumePrompt(s.booking)
-          if (next) reply = { ...reply, text: `${reply.text} ${next}` }
-        }
         if (faq.llmMeta) tb.set({ llm_ttft_ms: faq.llmMeta.ttftMs, cache_hit: faq.llmMeta.cacheHit, fallback: faq.llmMeta.fallback ? { reason: faq.llmMeta.fallback, step: faq.llmMeta.step } : null } as never)
       }
       if (reply.escalate && tr.to !== 'human' && reply.agent !== 'orchestrator') {
@@ -232,6 +228,11 @@ export class Platform {
     let out = g.blocked ? SAFE_LINE : g.text
     if (!g.blocked && reply.source === 'llm' && reply.decision === 'llm:primary') void this.cache.set(this.cache.key(text, t.id, t.policyVersion), out)
     if (g.blocked) this.log.warn('guard_blocked', { tenant: t.id, call_id: callId, violations: g.violations.map((v) => v.kind), cross_tenant: g.crossTenant })
+    // Side question answered during a booking: resume the booking (added after the guard; fixed template text)
+    if (!g.blocked && reply.agent === 'faq' && s.booking.active && !s.escalated && tr.intent !== 'goodbye') {
+      const next = resumePrompt(s.booking)
+      if (next) out = `${out} ${next}`
+    }
     out = humanize(out)
     const chunks = sentences(out)
 
