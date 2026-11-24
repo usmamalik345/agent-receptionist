@@ -5,6 +5,11 @@
  *   npm run replay -- --label=pr-123    output to metrics/replay/pr-123/
  *   npm run replay -- --gate            exit 1 if eval pass < EVAL_THRESHOLD, safety < 100%, or p95 first-audio > budget
  *   npm run replay -- --write-baseline  also write evals/replay/baseline.decisions.jsonl (for decision-diff in CI)
+ *   --provider=env    use the LLM from env (LLM_PROVIDER/LLM_API_KEY) instead of the mock. Opt-in only; CI never sets it.
+ *                     Paces model requests (--pace-ms, default 3100 = <=20/min), honours 429 retry-after,
+ *                     and stops calling the model after LLM_MAX_REQUESTS (default 150 in this mode).
+ *   --no-cache        disable the response cache (every retrieval turn calls the model; for TTFT sampling)
+ *   --limit=N         only the first N calls
  *
  * Measured here (real wall-clock on this machine): server-side time from transcript to
  * first audio ready (reply or filler), and per-stage span times (triage+router, retrieval,
@@ -18,7 +23,8 @@ import { fileURLToPath } from 'node:url'
 import { AgentRuntime } from '../server/agentTurn.ts'
 import { llmCostUsd } from '../server/cost.ts'
 import { loadLatencyConfig } from '../server/latency.ts'
-import { abortableSleep, createMockClient, type LlmClient } from '../server/llm.ts'
+import type { ResponseCache } from '../server/cache.ts'
+import { abortableSleep, createMockClient, loadLlmClient, type LlmClient, type RemoteLlmClient } from '../server/llm.ts'
 import type { RouterDecision } from '../server/router.ts'
 import type { ToolFn } from '../server/tools.ts'
 import type { TurnTrace } from '../server/tracing.ts'
@@ -36,7 +42,11 @@ const outDir = path.join(ROOT, 'metrics', 'replay', label)
 const threshold = Number(process.env.EVAL_THRESHOLD || 0.9)
 const config = loadLatencyConfig()
 
-const calls = readJsonl<EvalCase>(callsFile)
+const realProvider = opt('provider') === 'env'
+const paceMs = Number(opt('pace-ms') ?? 3100)
+const noCache = flag('no-cache')
+const limit = opt('limit') ? Number(opt('limit')) : undefined
+const calls = readJsonl<EvalCase>(callsFile).slice(0, limit)
 if (!calls.length) {
   console.error(`no calls in ${callsFile} - run npm run replay:fixtures`)
   process.exit(1)
@@ -45,7 +55,12 @@ if (!calls.length) {
 // ---- providers: always the offline mock here; --faults slows every 4th model call past the budget ----
 const mock = createMockClient()
 let llmCalls = 0
-const llm: LlmClient = faults
+const remote = realProvider ? (loadLlmClient({ LLM_MAX_REQUESTS: '150', ...process.env }) as RemoteLlmClient) : null
+if (realProvider && remote!.provider === 'mock') {
+  console.error(`--provider=env but the env selects the mock (${remote!.note}); refusing to label a mock run as real`)
+  process.exit(1)
+}
+const llm: LlmClient = remote ?? faults
   ? {
       ...mock,
       note: 'mock + injected latency',
@@ -69,8 +84,16 @@ const ticketTool: ToolFn<string> = async (args, ctx) => {
 const traces: TurnTrace[] = []
 const decisions: Array<RouterDecision & { fixture: string; turn_index: number }> = []
 let current = { fixture: '', turn: 0 }
+const nullCache: ResponseCache = {
+  key: (t, b, v) => `${b}|${v}|${t}`,
+  get: async () => null,
+  set: async () => {},
+  stats: () => ({ hits: 0, misses: 0, sets: 0, errors: 0, backend: 'memory' }),
+  resetStats: () => {},
+}
 const agent = new AgentRuntime({
   config,
+  ...(noCache ? { cache: nullCache } : {}),
   enforceRouter: true,
   stdout: false,
   llm,
@@ -95,6 +118,9 @@ interface TurnRow {
 const rows: TurnRow[] = []
 const callResults: Array<{ id: string; scenario: string; tags: string[]; ok: boolean; errors: string[] }> = []
 
+let lastRequestAt = 0
+const rateLimitWaits: number[] = []
+const modelAnswers: Array<Record<string, unknown> & { expectation_errors: string[]; guard?: TurnTrace['guard']; ttft_ms: number | null }> = []
 const t0 = Date.now()
 for (const c of calls) {
   const callId = `replay-${c.id}`
@@ -102,7 +128,23 @@ for (const c of calls) {
   const errs: string[] = []
   for (const [i, turn] of c.turns.entries()) {
     current = { fixture: c.id, turn: i + 1 }
+    const before = remote?.stats()
+    if (remote && lastRequestAt) {
+      const wait = paceMs - (Date.now() - lastRequestAt)
+      if (wait > 0) await new Promise((res) => setTimeout(res, wait))
+    }
     const r = await agent.turn(callId, turn.text)
+    if (remote && before) {
+      const after = remote.stats()
+      if (after.requests > before.requests) lastRequestAt = Date.now()
+      if (after.http429 > before.http429) {
+        rateLimitWaits.push(after.lastRetryAfterMs)
+        await new Promise((res) => setTimeout(res, after.lastRetryAfterMs))
+      }
+    }
+    if (r.trace.agent_path === 'multi_agent') {
+      modelAnswers.push({ fixture: c.id, turn: i + 1, question: turn.text, answer: r.text, citations: r.citations, guard: r.trace.guard, model: r.trace.model, ttft_ms: r.trace.llm_ttft_ms, first_audio_ms: r.firstAudioAtMs, first_audio_kind: r.trace.first_audio_kind, fallback: r.trace.fallback, cache_hit: r.cacheHit, expectation_errors: checkTurn(r, turn.expect) })
+    }
     const e = checkTurn(r, turn.expect)
     errs.push(...e.map((x) => `turn ${i + 1}: ${x} :: "${r.text.slice(0, 80)}"`))
     rows.push({ fixture: c.id, scenario: c.scenario ?? c.id, i: i + 1, ok: e.length === 0, errors: e, routeExpected: turn.expect.route, route: r.route, firstAudioMs: r.firstAudioAtMs, firstAudioKind: r.trace.first_audio_kind ?? 'reply', trace: r.trace })
@@ -128,11 +170,20 @@ const priced = ledger.filter((l) => l.unpriced === 0)
 const proj = agent.prices.projection_model
 const projCost = (t: TurnTrace) => (t.tokens && proj ? (llmCostUsd(agent.prices, proj, t.tokens) ?? 0) : 0)
 const projPerCall = calls.length ? rows.reduce((a, r) => a + projCost(r.trace), 0) / calls.length : 0
+const llmTurns = rows.filter((r) => typeof r.trace.llm_ttft_ms === 'number' && r.trace.agent_path === 'multi_agent' && !r.trace.cache_hit)
+const wrongAuto = modelAnswers.filter((a) => a.guard?.blocked || a.expectation_errors.length > 0)
 const engineGuardWarn = rows.filter((r) => r.trace.agent_path === 'engine' && r.trace.guard && !r.trace.guard.ok)
 
 const summary = {
   generated: new Date().toISOString(),
   label,
+  cache_disabled: noCache,
+  llm_requests: remote ? remote.stats() : null,
+  rate_limit_waits_ms: rateLimitWaits,
+  llm_ttft_ms: { samples: llmTurns.length, p50: percentile(llmTurns.map((r) => r.trace.llm_ttft_ms!), 50), p95: percentile(llmTurns.map((r) => r.trace.llm_ttft_ms!), 95) },
+  model_turn_first_audio_ms: { samples: modelTurns.length, p50: percentile(modelTurns.map((r) => r.firstAudioMs), 50), p95: percentile(modelTurns.map((r) => r.firstAudioMs), 95) },
+  model_answers: modelAnswers.length,
+  wrong_answers_auto: { count: wrongAuto.length, of: modelAnswers.length, rate: pct(wrongAuto.length, modelAnswers.length), rule: 'guard blocked OR fixture expectation failed on a model-answered turn' },
   mode: faults ? 'fault-injected (every 4th primary model call delayed 2x budget; every 5th ticket tool sends progress then stalls)' : 'clean',
   provider: `${agent.llm.provider} (${agent.llm.note})`,
   multi_agent: agent.multiAgent,
@@ -166,7 +217,7 @@ const summary = {
   tokens: { per_call_avg: Math.round(ledger.reduce((a, l) => a + l.tokens, 0) / Math.max(1, ledger.length)), estimated: true },
   cost: {
     per_call_usd: priced.length ? priced.reduce((a, l) => a + l.cost, 0) / priced.length : null,
-    note: `actual spend at configured rates for the models used (${agent.llm.primaryModel}/${agent.llm.smallModel}); price table as_of ${agent.prices.as_of}`,
+    note: `estimate from the dated price table (as_of ${agent.prices.as_of}) for ${agent.llm.primaryModel}/${agent.llm.smallModel}; free-plan usage is billed $0`,
     projection: { model: proj ?? null, per_call_usd: projPerCall, note: 'PROJECTION only: mock token estimates priced at the projection model paid rate; not a measurement' },
   },
 }
@@ -180,6 +231,7 @@ const slimDecisions = decisions.map((d) => ({
 }))
 writeFileSync(path.join(outDir, 'decisions.jsonl'), slimDecisions.map((d) => JSON.stringify(d)).join('\n') + '\n')
 writeFileSync(path.join(outDir, 'results.jsonl'), callResults.map((c) => JSON.stringify(c)).join('\n') + '\n')
+writeFileSync(path.join(outDir, 'model_answers.jsonl'), modelAnswers.map((a) => JSON.stringify(a)).join('\n') + (modelAnswers.length ? '\n' : ''))
 writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2) + '\n')
 if (flag('write-baseline')) {
   writeFileSync(path.join(ROOT, 'evals', 'replay', 'baseline.decisions.jsonl'), slimDecisions.map((d) => JSON.stringify(d)).join('\n') + '\n')
@@ -189,9 +241,11 @@ const S = summary
 const md = [
   `# Replay harness - ${label}`,
   '',
-  `Generated ${S.generated}. **Offline replay on the ${S.provider} provider, ${S.calls} synthetic calls / ${S.turns} turns** from \`${path.relative(ROOT, callsFile)}\`. Mode: ${S.mode}.`,
+  `Generated ${S.generated}. **${realProvider ? 'Live replay (real model API over the network, from cloud box)' : 'Offline replay'} on the ${S.provider} provider${noCache ? ', response cache disabled' : ''}, ${S.calls} synthetic calls / ${S.turns} turns** from \`${path.relative(ROOT, callsFile)}\`. Mode: ${S.mode}.`,
   '',
-  'Timings are real wall-clock on this machine for the server pipeline only (transcript in -> first audio text ready). STT, real-LLM TTFT, TTS and network are not part of this number.',
+  realProvider
+    ? 'Timings are real wall-clock on this machine: transcript in -> first audio text ready, including the real model API round trip (non-cached model turns). STT, TTS and caller audio are not part of this number. Model TTFT = request start -> first streamed answer token.'
+    : 'Timings are real wall-clock on this machine for the server pipeline only (transcript in -> first audio text ready). STT, real-LLM TTFT, TTS and network are not part of this number.',
   '',
   mdTable(['Metric', 'Value'], [
     ['Eval pass (calls)', `${S.eval_pass.passed}/${S.eval_pass.total} = ${S.eval_pass.rate}%`],
@@ -202,6 +256,10 @@ const md = [
     ['Tool-call schema validity', `${S.tool_validity.valid}/${S.tool_validity.total} = ${S.tool_validity.rate}%`],
     ['First audio ready p50 / p95 / max', `${fmt(S.first_audio_ready_ms.p50, ' ms', 2)} / ${fmt(S.first_audio_ready_ms.p95, ' ms', 2)} / ${S.first_audio_ready_ms.max} ms (budget ${S.budget_ms} ms)`],
     ['Turns over budget / filler-first turns', `${S.first_audio_over_budget_turns} / ${S.filler_first_turns}`],
+    ['Model TTFT p50 / p95 (non-cached model turns)', `${fmt(S.llm_ttft_ms.p50, ' ms')} / ${fmt(S.llm_ttft_ms.p95, ' ms')} (n=${S.llm_ttft_ms.samples})`],
+    ['First audio ready on model turns p50 / p95', `${fmt(S.model_turn_first_audio_ms.p50, ' ms')} / ${fmt(S.model_turn_first_audio_ms.p95, ' ms')} (n=${S.model_turn_first_audio_ms.samples})`],
+    ['Wrong answers (auto: guard block or expectation fail)', `${S.wrong_answers_auto.count}/${S.wrong_answers_auto.of}`],
+    ['Model requests / 429s / tokens (prompt+completion)', S.llm_requests ? `${S.llm_requests.requests} / ${S.llm_requests.http429} / ${S.llm_requests.promptTokens}+${S.llm_requests.completionTokens}` : 'mock (no remote requests)'],
     ['Triage + router p50 / p95', `${fmt(S.stage_ms.triage_router.p50, ' ms', 2)} / ${fmt(S.stage_ms.triage_router.p95, ' ms', 2)}`],
     ['Retrieval p50 / p95 (model turns)', `${fmt(S.stage_ms.retrieval.p50, ' ms', 2)} / ${fmt(S.stage_ms.retrieval.p95, ' ms', 2)}`],
     ['Model-or-engine span p50 / p95', `${fmt(S.stage_ms.model_or_engine.p50, ' ms', 2)} / ${fmt(S.stage_ms.model_or_engine.p95, ' ms', 2)}`],
@@ -211,7 +269,7 @@ const md = [
     ['Fallback turns / small-model fallback', `${S.fallback.rate}% / ${S.fallback.small_model_rate}%`],
     ['Calls hitting token cap', `${S.token_cap.calls_hit}/${S.calls} = ${S.token_cap.rate}% (cap ${S.token_cap.cap})`],
     ['Tokens per call (estimated)', String(S.tokens.per_call_avg)],
-    ['Cost per call (actual, mock)', S.cost.per_call_usd == null ? 'n/a' : `$${S.cost.per_call_usd.toFixed(6)}`],
+    ['Cost per call (price table)', S.cost.per_call_usd == null ? 'n/a' : `$${S.cost.per_call_usd.toFixed(6)}`],
     [`Cost per call PROJECTION (${S.cost.projection.model})`, `$${S.cost.projection.per_call_usd.toFixed(6)} - estimate, not measured`],
     ['Guard blocked / engine guard warnings / replies over length cap', `${S.guard_blocked_turns} / ${S.engine_guard_warnings} / ${S.length_warnings}`],
   ]),
