@@ -60,7 +60,7 @@ if (realProvider && remote!.provider === 'mock') {
   console.error(`--provider=env but the env selects the mock (${remote!.note}); refusing to label a mock run as real`)
   process.exit(1)
 }
-const llm: LlmClient = remote ?? faults
+const llm: LlmClient = remote ? remote : faults
   ? {
       ...mock,
       note: 'mock + injected latency',
@@ -84,6 +84,7 @@ const ticketTool: ToolFn<string> = async (args, ctx) => {
 const traces: TurnTrace[] = []
 const decisions: Array<RouterDecision & { fixture: string; turn_index: number }> = []
 let current = { fixture: '', turn: 0 }
+if (realProvider && llm !== remote) throw new Error('real-provider run is not using the remote client')
 const nullCache: ResponseCache = {
   key: (t, b, v) => `${b}|${v}|${t}`,
   get: async () => null,
