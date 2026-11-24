@@ -13,6 +13,10 @@ import cors from 'cors'
 import express from 'express'
 import twilio from 'twilio'
 import { mountAgentRoutes } from './agentRoutes.ts'
+import { mountPlatformRoutes } from './platform/http.ts'
+import { createLogger } from './platform/logger.ts'
+import { Platform } from './platform/orchestrator.ts'
+import { loadTenants } from './platform/registry.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const TTS_CACHE_DIR = path.join(__dirname, '..', '.tts-cache')
@@ -489,6 +493,13 @@ app.get('/api/tts', async (req, res) => {
 
 /** Traced agent pipeline + browser trace ingest (local, no outbound messages) */
 mountAgentRoutes(app)
+
+/** Multi-tenant platform API (20 SAMPLE tenants by default; see server/platform/) */
+{
+  const logger = createLogger()
+  const { tenants, errors } = loadTenants()
+  mountPlatformRoutes(app, new Platform({ tenants, logger }), { logger, tenantErrors: errors })
+}
 
 app.listen(PORT, () => {
   const provider = pickProvider()
