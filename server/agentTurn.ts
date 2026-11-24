@@ -362,6 +362,8 @@ export class AgentRuntime {
       source: fromModel ? 'llm' : 'engine',
       grounding: fromModel ? (cited.length ? cited : (retrieval?.passages ?? [])).map((p) => p.text) : engineGrounding(),
       allowedContacts,
+      hours: fromModel ? biz.locations : undefined,
+      callerText: fromModel ? text : undefined,
       maxChars: this.opts.guardMaxChars,
     })
     let citations = fromModel ? (ladder.step === 'cache' ? (retrieval?.passages.slice(0, 1).map((p) => p.id) ?? []) : lastCitations) : []

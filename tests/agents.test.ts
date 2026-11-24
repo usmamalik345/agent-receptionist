@@ -109,3 +109,22 @@ test('retrieval reaches hours/address passages from plain wording; hours passage
   const upperton = buildPassages(mmDentalBusiness).find((p) => p.id === 'hours:upperton-road-practice')!
   assert.match(upperton.text, /Saturday 9am–12pm phone lines only, Sunday closed\. Note: Saturday patients are seen at Uppingham Road/)
 })
+
+test('guard: day/time consistency per location blocks a wrong closing time that is grounded for another day', () => {
+  const grounding = buildPassages(mmDentalBusiness).filter((p) => p.source === 'hours').map((p) => p.text)
+  const hours = mmDentalBusiness.locations
+  const wrong = guardReply({ text: 'The Uppingham Road practice closes at 5 pm on Tuesday.', source: 'llm', grounding, hours })
+  assert.equal(wrong.blocked, true)
+  assert.equal(wrong.violations[0].kind, 'hours_mismatch')
+  assert.equal(guardReply({ text: 'The Uppingham Road practice closes at 7pm on Tuesday.', source: 'llm', grounding, hours }).ok, true)
+  // two locations in one sentence: not attributed, plain grounding check only
+  assert.equal(guardReply({ text: 'On Friday Uppingham Road and Upperton Road are both open 9am to 5pm.', source: 'llm', grounding, hours }).ok, true)
+})
+
+test('guard: a time the caller said may be repeated back; a price the caller said may not', () => {
+  const grounding = buildPassages(mmDentalBusiness).filter((p) => p.source === 'hours').map((p) => p.text)
+  const ok = guardReply({ text: "Sorry, we're not open at 8pm on Friday; Uppingham Road is open 9am to 5pm.", source: 'llm', grounding, hours: mmDentalBusiness.locations, callerText: 'Can I come in at 8pm on Friday?' })
+  assert.equal(ok.ok, true)
+  const price = guardReply({ text: 'Yes, a filling is £40.', source: 'llm', grounding, callerText: 'Is a filling £40?' })
+  assert.equal(price.blocked, true)
+})
