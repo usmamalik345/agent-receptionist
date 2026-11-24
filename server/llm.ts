@@ -38,7 +38,7 @@ export interface LlmResponse {
   model: string
   provider: LlmProvider
   usage: LlmUsage
-  /** ms from request start to first token (non-streaming: to full response) */
+  /** ms from request start to first answer token (streaming); non-streaming: to full response */
   ttftMs: number
 }
 
@@ -111,12 +111,72 @@ export function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> 
   })
 }
 
-type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<{
+type FetchResponse = {
   ok: boolean
   status: number
+  headers?: { get(name: string): string | null }
   json(): Promise<unknown>
   text(): Promise<string>
-}>
+  body?: AsyncIterable<Uint8Array> | null
+}
+type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<FetchResponse>
+
+export interface LlmClientStats {
+  requests: number
+  http429: number
+  errors: number
+  /** retry-after (ms) from the last 429, 0 if none */
+  lastRetryAfterMs: number
+  promptTokens: number
+  completionTokens: number
+}
+
+/** OpenAI-compatible clients also expose request stats (rate-limit handling, budgets). */
+export interface RemoteLlmClient extends LlmClient {
+  stats(): LlmClientStats
+}
+
+export const isReasoningModel = (model: string) => /gpt-oss/i.test(model)
+
+/** Parse an SSE chat-completions stream: first content delta time, text, usage. */
+export async function readSseStream(
+  body: AsyncIterable<Uint8Array>,
+  t0: number,
+): Promise<{ text: string; firstTokenMs: number | null; usage: { prompt_tokens?: number; completion_tokens?: number } | null }> {
+  const dec = new TextDecoder()
+  let buf = ''
+  let text = ''
+  let first: number | null = null
+  let usage: { prompt_tokens?: number; completion_tokens?: number } | null = null
+  for await (const chunk of body) {
+    buf += dec.decode(chunk, { stream: true })
+    let nl: number
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl).trim()
+      buf = buf.slice(nl + 1)
+      if (!line.startsWith('data:')) continue
+      const data = line.slice(5).trim()
+      if (data === '[DONE]') continue
+      try {
+        const j = JSON.parse(data) as {
+          choices?: Array<{ delta?: { content?: string } }>
+          usage?: { prompt_tokens?: number; completion_tokens?: number }
+          x_groq?: { usage?: { prompt_tokens?: number; completion_tokens?: number } }
+        }
+        const d = j.choices?.[0]?.delta?.content
+        if (d) {
+          if (first === null) first = Math.round(performance.now() - t0)
+          text += d
+        }
+        const u = j.usage ?? j.x_groq?.usage
+        if (u && typeof u.prompt_tokens === 'number') usage = u
+      } catch {
+        /* ignore keep-alive / partial lines */
+      }
+    }
+  }
+  return { text, firstTokenMs: first, usage }
+}
 
 export function createOpenAiCompatibleClient(opts: {
   provider: Exclude<LlmProvider, 'mock'>
@@ -127,45 +187,91 @@ export function createOpenAiCompatibleClient(opts: {
   timeoutMs?: number
   fetchImpl?: FetchLike
   note?: string
-}): LlmClient {
+  /** stream=true -> real time-to-first-token (default true) */
+  stream?: boolean
+  /** gpt-oss: reasoning effort (default 'low') */
+  reasoningEffort?: string
+  /** reasoning models spend completion tokens on hidden reasoning: floor for max_tokens */
+  minCompletionTokens?: number
+  /** hard cap on requests per process (free-tier protection); over it -> error, ladder falls back */
+  maxRequests?: number
+}): RemoteLlmClient {
   const doFetch: FetchLike = opts.fetchImpl ?? (globalThis.fetch as unknown as FetchLike)
+  const st: LlmClientStats = { requests: 0, http429: 0, errors: 0, lastRetryAfterMs: 0, promptTokens: 0, completionTokens: 0 }
+  let blockedUntil = 0
   return {
     provider: opts.provider,
     primaryModel: opts.model,
     smallModel: opts.smallModel,
     note: opts.note ?? `LLM_PROVIDER=${opts.provider}`,
+    stats: () => ({ ...st }),
     async complete(req) {
       const model = req.tier === 'small' ? opts.smallModel : opts.model
+      // Respect a recent 429 retry-after without calling the API again (fail fast -> ladder fallback)
+      if (Date.now() < blockedUntil) throw new Error('llm_http_429: local backoff (retry-after)')
+      if (opts.maxRequests !== undefined && st.requests >= opts.maxRequests) throw new Error('llm_request_cap: LLM_MAX_REQUESTS reached')
+      st.requests++
       const t0 = performance.now()
       const ac = new AbortController()
       const timer = setTimeout(() => ac.abort(), opts.timeoutMs ?? 8000)
       req.signal?.addEventListener('abort', () => ac.abort(), { once: true })
+      const stream = opts.stream ?? true
       try {
         const headers: Record<string, string> = { 'content-type': 'application/json' }
         if (opts.apiKey) headers.authorization = `Bearer ${opts.apiKey}`
+        const reasoning = isReasoningModel(model)
+        const maxTokens = Math.max(req.maxTokens ?? 200, reasoning ? (opts.minCompletionTokens ?? 400) : 0)
+        const payload: Record<string, unknown> = { model, messages: req.messages, max_tokens: maxTokens, temperature: req.temperature ?? 0, stream }
+        if (reasoning) {
+          payload.reasoning_effort = opts.reasoningEffort ?? 'low'
+          payload.include_reasoning = false
+        }
+        if (stream) payload.stream_options = { include_usage: true }
         const res = await doFetch(`${opts.baseUrl.replace(/\/$/, '')}/chat/completions`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ model, messages: req.messages, max_tokens: req.maxTokens ?? 200, temperature: req.temperature ?? 0, stream: false }),
+          body: JSON.stringify(payload),
           signal: ac.signal,
         })
-        if (!res.ok) throw new Error(`llm_http_${res.status}: ${(await res.text()).slice(0, 160)}`)
-        const body = (await res.json()) as {
-          choices?: Array<{ message?: { content?: string } }>
-          usage?: { prompt_tokens?: number; completion_tokens?: number }
+        if (!res.ok) {
+          if (res.status === 429) {
+            st.http429++
+            const ra = Number(res.headers?.get('retry-after') ?? '')
+            st.lastRetryAfterMs = Number.isFinite(ra) && ra > 0 ? Math.min(ra * 1000, 120_000) : 10_000
+            blockedUntil = Date.now() + st.lastRetryAfterMs
+          }
+          // Body is the provider's error JSON; never contains our key. Trimmed.
+          throw new Error(`llm_http_${res.status}: ${(await res.text()).slice(0, 160)}`)
         }
-        const text = String(body.choices?.[0]?.message?.content ?? '').trim()
         const prompt = req.messages.map((m) => m.content).join('\n')
-        const reported = typeof body.usage?.prompt_tokens === 'number' && typeof body.usage?.completion_tokens === 'number'
-        return {
-          text,
-          model,
-          provider: opts.provider,
-          usage: reported
-            ? { prompt: body.usage!.prompt_tokens!, completion: body.usage!.completion_tokens!, estimated: false }
-            : { prompt: estimateTokenCount(prompt), completion: estimateTokenCount(text), estimated: true },
-          ttftMs: Math.round(performance.now() - t0),
+        let text: string
+        let firstMs: number
+        let usage: { prompt_tokens?: number; completion_tokens?: number } | null | undefined
+        if (stream && res.body) {
+          const r = await readSseStream(res.body, t0)
+          text = r.text.trim()
+          firstMs = r.firstTokenMs ?? Math.round(performance.now() - t0)
+          usage = r.usage
+        } else {
+          const body = (await res.json()) as {
+            choices?: Array<{ message?: { content?: string } }>
+            usage?: { prompt_tokens?: number; completion_tokens?: number }
+          }
+          text = String(body.choices?.[0]?.message?.content ?? '').trim()
+          firstMs = Math.round(performance.now() - t0)
+          usage = body.usage
         }
+        if (!text) throw new Error('llm_empty: no content (reasoning used the whole token budget?)')
+        const reported = typeof usage?.prompt_tokens === 'number' && typeof usage?.completion_tokens === 'number'
+        const u = reported
+          ? { prompt: usage!.prompt_tokens!, completion: usage!.completion_tokens!, estimated: false }
+          : { prompt: estimateTokenCount(prompt), completion: estimateTokenCount(text), estimated: true }
+        st.promptTokens += u.prompt
+        st.completionTokens += u.completion
+        return { text, model, provider: opts.provider, usage: u, ttftMs: firstMs }
+      } catch (e) {
+        st.errors++
+        throw e
       } finally {
         clearTimeout(timer)
       }
@@ -194,6 +300,10 @@ export function loadLlmClient(env: Record<string, string | undefined> = process.
     model: env.LLM_MODEL || d.model,
     smallModel: env.LLM_SMALL_MODEL || env.LLM_MODEL || d.small,
     timeoutMs: Number(env.LLM_TIMEOUT_MS || 8000) || 8000,
+    stream: env.LLM_STREAM !== '0',
+    reasoningEffort: env.LLM_REASONING_EFFORT || 'low',
+    minCompletionTokens: Number(env.LLM_MIN_COMPLETION_TOKENS || 400) || 400,
+    maxRequests: env.LLM_MAX_REQUESTS ? Number(env.LLM_MAX_REQUESTS) : undefined,
     fetchImpl,
   })
 }
