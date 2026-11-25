@@ -33,11 +33,11 @@ async function talk(p: Platform, id: string, lines: string[]) {
 const DENTAL_BOOK = ['I need a check-up', 'the first one', 'Thursday', 'the first one', 'Priya Shah', '07700 900123']
 const HOTEL_BOOK = ['I want to book a room', 'from 27 November for 2 nights', '2 adults', 'the first one', 'Maya Khan', '07700 900456']
 
-test('20 sample tenants load: 10 hotels + 10 clinics, all valid, all labelled SAMPLE', () => {
+test('22 sample tenants load: 11 hotels + 11 clinics (20 fictional + Erth and MM Dental demos), all valid, all labelled SAMPLE', () => {
   const r = loadTenants()
   assert.equal(r.errors.length, 0)
-  assert.equal(hotels.length, 10)
-  assert.equal(clinics.length, 10)
+  assert.equal(hotels.length, 11)
+  assert.equal(clinics.length, 11)
   for (const t of tenants.values()) assert.ok(t.sample && /SAMPLE/.test(t.name), t.id)
 })
 
@@ -49,7 +49,7 @@ test('onboarding: a new tenant JSON file is served with no code change; invalid 
   writeFileSync(path.join(dir, 'new-smile-clinic.json'), JSON.stringify(fresh))
   writeFileSync(path.join(dir, 'broken.json'), JSON.stringify({ id: 'broken', vertical: 'spa' }))
   const r = loadTenants(dir)
-  assert.equal(r.tenants.size, 21)
+  assert.equal(r.tenants.size, 23)
   assert.equal(r.errors.length, 1)
   assert.equal(r.errors[0].file, 'broken.json')
   const p = new Platform({ tenants: r.tenants, traceSink: () => {}, now: NOW })
@@ -190,9 +190,9 @@ test('HTTP: healthz, readyz, tenants, call lifecycle, 404 across tenants, 400 on
   try {
     assert.equal((await fetch(`${base}/healthz`)).status, 200)
     const ready = await (await fetch(`${base}/readyz`)).json()
-    assert.equal(ready.tenants, 20)
-    assert.deepEqual(ready.by_vertical, { hotel: 10, dental: 10 })
-    assert.equal((await (await fetch(`${base}/api/v1/tenants`)).json()).tenants.length, 20)
+    assert.equal(ready.tenants, 22)
+    assert.deepEqual(ready.by_vertical, { hotel: 11, dental: 11 })
+    assert.equal((await (await fetch(`${base}/api/v1/tenants`)).json()).tenants.length, 22)
     const start = await (await fetch(`${base}/api/v1/tenants/brightsmile-dental/calls`, { method: 'POST' })).json()
     assert.ok(start.callId && start.voice?.preferredVoices?.length)
     const post = (u: string, b: unknown) => fetch(`${base}${u}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })

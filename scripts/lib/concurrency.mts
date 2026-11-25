@@ -13,7 +13,7 @@ import { silentLogger } from '../../server/platform/logger.ts'
 import { mountPlatformRoutes } from '../../server/platform/http.ts'
 import { Platform } from '../../server/platform/orchestrator.ts'
 import { loadTenants } from '../../server/platform/registry.ts'
-import type { Tenant } from '../../server/platform/tenant.ts'
+import { money, type Tenant } from '../../server/platform/tenant.ts'
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const brand = (t: Tenant) => t.name.replace(/\s*\(SAMPLE\)\s*/i, '')
@@ -31,12 +31,11 @@ type Turn = { say: string; must?: RegExp[]; booked?: boolean }
 
 function script(t: Tenant, name: string, phone: string): Turn[] {
   const loc = t.locations[0]
-  const cur = t.currency === 'USD' ? '$' : '£'
   if (t.dental) {
-    const f = t.dental.treatments.find((x) => x.name === 'Filling')!
+    const f = t.dental.treatments.find((x) => x.name === 'Filling') ?? t.dental.treatments.find((x) => x.price !== null)!
     return [
       { say: 'What time do you close on Friday?', must: [new RegExp(esc(speak(loc.hours.fri)))] },
-      { say: 'How much is a filling?', must: [new RegExp(esc(`£${f.price}`))] },
+      { say: `How much is ${/^[aeiou]/i.test(f.name) ? 'an' : 'a'} ${f.name.toLowerCase()}?`, must: [new RegExp(esc(money(t, f.price!)))] },
       { say: 'I need a check-up' }, { say: 'the first one' }, { say: 'Thursday' }, { say: 'the first one' },
       { say: name }, { say: phone, must: [/Shall I book it\?/, new RegExp(esc(name.split(' ')[0]))] },
       { say: 'yes', must: [/booked/], booked: true },
@@ -44,7 +43,7 @@ function script(t: Tenant, name: string, phone: string): Turn[] {
   }
   return [
     { say: 'Is reception open on Sunday?', must: [new RegExp(esc(speak(loc.hours.sun)))] },
-    { say: 'How much are your rooms?', must: [new RegExp(esc(`${cur}${t.hotel!.rooms[0].ratePerNight}`))] },
+    { say: 'How much are your rooms?', must: [new RegExp(esc(t.hotel!.rooms[0].ratePerNight === null ? t.hotel!.rooms[0].type : money(t, t.hotel!.rooms[0].ratePerNight)))] },
     { say: 'I want to book a room' }, { say: 'from 27 November for 2 nights' }, { say: '2 adults' }, { say: 'the first one' },
     { say: name }, { say: phone, must: [/Shall I book it\?/, new RegExp(esc(name.split(' ')[0]))] },
     { say: 'yes', must: [/booked/], booked: true },

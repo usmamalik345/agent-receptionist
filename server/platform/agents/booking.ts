@@ -9,7 +9,7 @@ import {
   ROOM_SYNONYMS, spokenDate, spokenTime, TREATMENT_SYNONYMS,
 } from '../extract.ts'
 import type { AgentReply, ToolCallRecord } from '../protocol.ts'
-import type { Booking } from '../store.ts'
+import type { Booking, RoomOption } from '../store.ts'
 import { money, type Tenant } from '../tenant.ts'
 import { callTool, type ToolContext } from '../tools.ts'
 
@@ -198,7 +198,7 @@ async function hotelNext(d: BookingDeps, s: BookingState, invoke: Invoke): Promi
     return reply('And how many guests will there be?', 'ask_guests')
   }
   if (!s.roomType || !s.offered?.includes(s.roomType)) {
-    const r = await invoke<Array<{ type: string; ratePerNight: number; nights: number; total: number }>>('check_room_availability', { check_in: s.checkIn, check_out: s.checkOut, guests: s.guests })
+    const r = await invoke<RoomOption[]>('check_room_availability', { check_in: s.checkIn, check_out: s.checkOut, guests: s.guests })
     if (!r.ok) return reply("Sorry, I can't see availability right now. I'll pass you to the team.", 'check_room_availability:failed', [], { escalate: { reason: `tool_failure:check_room_availability:${r.error}` } })
     const opts = r.result
     const nights = nightsBetween(s.checkIn, s.checkOut)
@@ -215,8 +215,8 @@ async function hotelNext(d: BookingDeps, s: BookingState, invoke: Invoke): Promi
       s.roomType = undefined
       s.expecting = 'room'
       const lead = asked ? `The ${asked.toLowerCase()} isn't available then, but ` : ''
-      const g = top.map((o) => `${o.type} at ${money(t, o.ratePerNight)} a night`)
-      return reply(`${lead}${lead ? 'for' : 'For'} ${nights} night${nights > 1 ? 's' : ''} from ${spokenDate(s.checkIn)}, I have ${article(top[0].type)} ${g.join(', or a ')}. Which would you like?`, 'offer_rooms', g)
+      const g = top.map((o) => (o.ratePerNight === null ? o.type : `${o.type} at ${money(t, o.ratePerNight)} a night`))
+      return reply(`${lead}${lead ? 'for' : 'For'} ${nights} night${nights > 1 ? 's' : ''} from ${spokenDate(s.checkIn)}, I have ${g.map((x, i) => `${i ? 'or ' : ''}${article(x)} ${x}`).join(', ')}. Which would you like?`, 'offer_rooms', g)
     }
   }
   if (!s.name) {
@@ -229,11 +229,11 @@ async function hotelNext(d: BookingDeps, s: BookingState, invoke: Invoke): Promi
   }
   const nights = nightsBetween(s.checkIn, s.checkOut)
   const room = t.hotel!.rooms.find((r) => r.type === s.roomType)!
-  const total = money(t, room.ratePerNight * nights)
-  const summary = `${article(s.roomType!)} ${s.roomType} for ${s.guests} guest${s.guests > 1 ? 's' : ''}, ${nights} night${nights > 1 ? 's' : ''} from ${spokenDate(s.checkIn)}, ${total} in total, under ${s.name}`
+  const total = room.ratePerNight === null ? 'rate confirmed by reservations' : `${money(t, room.ratePerNight * nights)} in total`
+  const summary = `${article(s.roomType!)} ${s.roomType} for ${s.guests} guest${s.guests > 1 ? 's' : ''}, ${nights} night${nights > 1 ? 's' : ''} from ${spokenDate(s.checkIn)}, ${total}, under ${s.name}`
   s.pending = { id: globalThis.crypto.randomUUID(), summary, args: { check_in: s.checkIn, check_out: s.checkOut, room_type: s.roomType, guests: s.guests, name: s.name, phone: s.phone } }
   s.expecting = 'confirm'
-  return reply(`Just to confirm, that's ${summary}. Shall I book it?`, 'confirm_request', [summary, s.phone, `${money(t, room.ratePerNight)} per night`])
+  return reply(`Just to confirm, that's ${summary}. Shall I book it?`, 'confirm_request', [summary, s.phone, room.ratePerNight === null ? 'rate confirmed by reservations' : `${money(t, room.ratePerNight)} per night`])
 }
 
 const article = (w: string) => (/^[aeiou]/i.test(w) ? 'an' : 'a')

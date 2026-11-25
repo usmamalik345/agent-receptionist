@@ -64,9 +64,13 @@ export async function runFaqAgent(d: FaqDeps, text: string, tr: TriageResult): P
       const grounding = items.map((i) => `${i.item}: ${i.price}`)
       if (hit.length === 1) {
         const i = hit[0]
-        return reply(i.price ? `${/^[aeiou]/i.test(i.item) ? 'An' : 'A'} ${i.item.toLowerCase()} is ${i.price}${t.hotel ? '' : ''}.` : `The price for ${i.item.toLowerCase()} is given after an assessment, so the team will confirm it.`, 'get_prices:item', grounding, { source: 'tool' })
+        return reply(i.price ? `${/^[aeiou]/i.test(i.item) ? 'An' : 'A'} ${i.item.toLowerCase()} is ${i.price}${t.hotel ? '' : ''}.` : t.hotel ? `The rate for the ${i.item} depends on your dates, so reservations will confirm it.` : `The price for ${i.item.toLowerCase()} is given after an assessment, so the team will confirm it.`, 'get_prices:item', grounding, { source: 'tool' })
       }
       const priced = items.filter((i) => i.price).slice(0, 3)
+      if (!priced.length) {
+        const names = items.slice(0, 3).map((i) => (t.hotel ? `the ${i.item}` : i.item.toLowerCase()))
+        return reply(t.hotel ? `Rates depend on your dates, so reservations will confirm them. Rooms include ${spokenList(names)}. Would you like me to check dates for you?` : `Prices are given after an assessment, so the team will confirm them. We offer ${spokenList(names)}.`, 'get_prices:unpublished', grounding, { source: 'tool' })
+      }
       return reply(`${spokenList(priced.map((i) => `${i.item.toLowerCase()} is ${i.price}`))}. Is there something specific you'd like a price for?`.replace(/^./, (c) => c.toUpperCase()), 'get_prices:list', grounding, { source: 'tool' })
     }
     case 'policy': {

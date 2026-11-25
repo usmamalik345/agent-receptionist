@@ -14,7 +14,10 @@ export function toBusinessConfig(t: Tenant): BusinessConfig {
       { q: 'What time is check-in and check-out?', a: `Check-in is from ${t.hotel.checkInTime} and check-out is by ${t.hotel.checkOutTime}.`, keywords: kw('check-in checkin check-out checkout arrive arrival leave departure') },
       { q: 'What is the cancellation policy?', a: t.hotel.cancellationPolicy, keywords: kw('cancel cancellation refund policy') },
     )
-    for (const r of t.hotel.rooms) pricing.push({ item: `${r.type} (up to ${r.maxGuests} guests)`, price: `${money(t, r.ratePerNight)} per night` })
+    for (const r of t.hotel.rooms) {
+      if (r.ratePerNight !== null) pricing.push({ item: `${r.type} (up to ${r.maxGuests} guests)`, price: `${money(t, r.ratePerNight)} per night` })
+      else services.push({ name: `${r.type} (up to ${r.maxGuests} guests)`, priceNote: 'rate confirmed by reservations' })
+    }
   }
   if (t.dental) {
     for (const tr of t.dental.treatments) {

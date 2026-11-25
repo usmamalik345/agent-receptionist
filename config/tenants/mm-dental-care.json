@@ -1,0 +1,57 @@
+{
+  "id": "mm-dental-care",
+  "vertical": "dental",
+  "name": "MM Dental Care (SAMPLE)",
+  "sample": true,
+  "source": "Demo tenant. Public facts from mmdentalcare.co.uk, as already used in src/businesses/mm-dental.ts. Not an official product. Check-up price is not published, so it is null (the team confirms it); durationMin/slotMinutes are booking-simulator defaults, not published facts.",
+  "timezone": "Europe/London",
+  "currency": "GBP",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Mia",
+    "locale": "en-GB",
+    "preferredVoices": [
+      "Microsoft Sonia Online (Natural) - English (United Kingdom)",
+      "Microsoft Libby Online (Natural) - English (United Kingdom)",
+      "Google UK English Female",
+      "en-GB-SoniaNeural"
+    ],
+    "rate": 0.98,
+    "pitch": 1,
+    "style": "calm"
+  },
+  "locations": [
+    {
+      "name": "Uppingham Road Practice",
+      "address": "193 Uppingham Road, Leicester, LE5 4BQ",
+      "phone": "0116 276 7760",
+      "hours": { "mon": "8:30am–5pm", "tue": "8:30am–7pm", "wed": "8:30am–7pm", "thu": "9am–7pm", "fri": "9am–5pm", "sat": "9am–12pm", "sun": "closed" }
+    },
+    {
+      "name": "Upperton Road Practice",
+      "address": "15 Upperton Road, Leicester, LE3 0BH",
+      "phone": "0116 247 0431",
+      "hours": { "mon": "10:30am–6pm", "tue": "9am–5pm", "wed": "9am–6pm", "thu": "9am–5pm", "fri": "9am–5pm", "sat": "9am–12pm phone lines only", "sun": "closed" }
+    }
+  ],
+  "faqs": [
+    { "q": "Are you taking new patients?", "a": "Yes, new patients are always welcome.", "keywords": "new patient patients register registration join sign up" },
+    { "q": "What payment options do you have?", "a": "Pay as you go, or membership plans from £13.50 a month.", "keywords": "payment pay plan membership monthly finance" },
+    { "q": "How much is an emergency appointment?", "a": "Same-day emergency appointments are £50 for the consultation plus £10 for any X-rays, with treatment charged on top.", "keywords": "emergency same-day urgent fee cost" },
+    { "q": "Do you help nervous patients?", "a": "Yes. The team is used to nervous patients and people who haven't seen a dentist in a long time, and will go at your pace.", "keywords": "nervous anxious scared afraid fear phobia long time" },
+    { "q": "Is the Upperton Road practice open on Saturday?", "a": "On Saturdays Upperton Road is phone lines only, 9am to 12pm; Saturday patients are seen at Uppingham Road.", "keywords": "saturday weekend upperton" },
+    { "q": "Is there parking?", "a": "Parking details aren't in my notes, so the practice team will confirm the best place to park.", "keywords": "parking park car" }
+  ],
+  "dental": {
+    "slotMinutes": 30,
+    "treatments": [
+      { "name": "Check-up", "price": null, "durationMin": 30 },
+      { "name": "Emergency appointment", "price": 50, "durationMin": 30 }
+    ],
+    "emergency": {
+      "message": "We can offer a same-day emergency appointment. The consultation is £50, plus £10 for any X-rays, and treatment is charged on top. We aim to get you pain free at the appointment.",
+      "severeAdvice": "If you have severe swelling affecting breathing or swallowing, call 999 or go to A&E."
+    }
+  }
+}

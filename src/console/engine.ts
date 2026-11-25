@@ -1,6 +1,6 @@
 /**
  * Console engine: runs the SAME multi-agent orchestrator as the server, inside the browser,
- * over the 20 SAMPLE tenant files. No backend needed (works as a static Vercel deploy).
+ * over the SAMPLE tenant files in config/tenants/. No backend needed (works as a static Vercel deploy).
  * Open questions use the offline extractive responder (no API key ever goes to a browser).
  */
 import { createMockClient } from '../../server/llm.ts'
@@ -14,7 +14,10 @@ export const tenants = new Map<string, Tenant>()
 for (const json of Object.values(files)) {
   if (validateTenant(json).length === 0) tenants.set((json as Tenant).id, json as Tenant)
 }
-export const tenantList = [...tenants.values()].sort((a, b) => a.vertical.localeCompare(b.vertical) * -1 || a.name.localeCompare(b.name))
+/** Demo tenants built from real public facts (old ?biz= links land here) are listed first; /app opens the first one. */
+export const FEATURED = ['erth-abu-dhabi', 'mm-dental-care']
+const rank = (id: string) => (FEATURED.includes(id) ? 0 : 1)
+export const tenantList = [...tenants.values()].sort((a, b) => a.vertical.localeCompare(b.vertical) * -1 || rank(a.id) - rank(b.id) || a.name.localeCompare(b.name))
 
 export const platform = new Platform({
   tenants,

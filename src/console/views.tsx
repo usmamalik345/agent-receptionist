@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { speakText, waitForVoices } from '../lib/speech'
 import { pickBestVoice } from '../lib/voicePick'
+import { money } from '../../server/platform/tenant.ts'
 import { brand, platform, tenantList, tenants } from './engine'
 import { scenariosFor } from './scenarios'
 import { statusOf, useConsole, type Call } from './state'
@@ -150,7 +151,7 @@ export function BookingsView({ tenantId }: { tenantId: string }) {
               <td>{b.name}<div style={{ color: 'var(--t3)', fontSize: 12 }}>{b.phone}</div></td>
               <td className="mono">{b.kind === 'room' ? `${b.checkIn} → ${b.checkOut}` : `${b.date} ${b.time}`}</td>
               <td>{b.kind === 'room' ? `${b.roomType} · ${b.guests} guests` : `${b.treatment} · ${b.location}`}</td>
-              <td className="mono">{b.totalPrice != null ? `${t.currency === 'USD' ? '$' : '£'}${b.totalPrice}` : '—'}</td>
+              <td className="mono">{b.totalPrice != null ? money(t, b.totalPrice) : '—'}</td>
               <td className="mono">{fmtTime(Date.parse(b.createdAt))}</td>
             </tr>
           ))}
@@ -174,7 +175,6 @@ export function SettingsView({ tenantId }: { tenantId: string }) {
   useEffect(() => { void waitForVoices(1500).then((v) => { setVoices(v.filter((x) => x.lang.toLowerCase().startsWith('en'))); setLoaded(true) }) }, [])
   const auto = pickBestVoice(voices, t.voice.locale, t.voice.preferredVoices)
   const preview = () => void speakText(`Hi, you're through to ${brand(t)}, this is ${t.voice.agentName}. How can I help?`, 'en', { voiceLocale: t.voice.locale, preferredVoices: voiceName ? [voiceName] : t.voice.preferredVoices, rate, pitch })
-  const cur = t.currency === 'USD' ? '$' : '£'
   return (
     <div className="sb-scroll"><div className="page">
       <section className="sec">
@@ -197,13 +197,14 @@ export function SettingsView({ tenantId }: { tenantId: string }) {
             <div className="fld"><span className="k">Vertical</span><span style={{ textTransform: 'capitalize' }}>{t.vertical}</span></div>
             <div className="fld"><span className="k">Timezone</span><span className="mono">{t.timezone}</span></div>
             <div className="fld"><span className="k">Policy version</span><span className="mono">{t.policyVersion}</span></div>
+            {t.source && <div className="fld"><span className="k">Data source</span><span>{t.source}</span></div>}
             <div className="fld"><span className="k">Rate limit</span><span>{t.rateLimitPerMinute ?? 120} req/min</span></div>
             {t.hotel && <div className="fld"><span className="k">Check-in / out</span><span className="mono">{t.hotel.checkInTime} / {t.hotel.checkOutTime}</span></div>}
           </div></section>
         <section className="sec"><header><div><h3>{t.hotel ? 'Rate card' : 'Treatments'}</h3><p>The only prices agents may quote.</p></div></header>
           <table className="tbl"><tbody>
-            {t.hotel ? t.hotel.rooms.map((r) => <tr key={r.type}><td>{r.type}</td><td>{r.maxGuests} guests</td><td className="mono" style={{ textAlign: 'right' }}>{cur}{r.ratePerNight}/night</td></tr>)
-              : t.dental!.treatments.map((r) => <tr key={r.name}><td>{r.name}</td><td>{r.durationMin} min</td><td className="mono" style={{ textAlign: 'right' }}>{r.price === null ? 'after assessment' : `£${r.price}`}</td></tr>)}
+            {t.hotel ? t.hotel.rooms.map((r) => <tr key={r.type}><td>{r.type}</td><td>{r.maxGuests} guests</td><td className="mono" style={{ textAlign: 'right' }}>{r.ratePerNight === null ? 'on request' : `${money(t, r.ratePerNight)}/night`}</td></tr>)
+              : t.dental!.treatments.map((r) => <tr key={r.name}><td>{r.name}</td><td>{r.durationMin} min</td><td className="mono" style={{ textAlign: 'right' }}>{r.price === null ? 'after assessment' : money(t, r.price)}</td></tr>)}
           </tbody></table></section>
       </div>
       {t.locations.map((l) => (

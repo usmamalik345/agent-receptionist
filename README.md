@@ -1,8 +1,8 @@
 # AI Receptionist Platform: multi-tenant, multi-agent (hotels + dental clinics)
 
-A voice and chat receptionist for many businesses at once. It ships with **20 SAMPLE tenants (10 hotels, 10 dental clinics)**. All names, addresses and phone numbers are fictional (555-01xx / Ofcom drama ranges). You onboard a new business by adding one JSON file, with no code change. Every caller turn goes through a set of small agents with typed hand-offs, per-agent tool allow-lists and per-agent trace spans.
+A voice and chat receptionist for many businesses at once. It ships with **22 SAMPLE tenants (11 hotels, 11 dental clinics)**: 20 fictional ones (names, addresses and phone numbers in 555-01xx / Ofcom drama ranges) plus two demos built from public facts, **Erth Abu Dhabi** (erth.ae) and **MM Dental Care** (mmdentalcare.co.uk). Where a fact isn't published (Erth room rates, MM check-up price) the field is `null` and the agent says the team will confirm it; nothing is invented. You onboard a new business by adding one JSON file, with no code change. Every caller turn goes through a set of small agents with typed hand-offs, per-agent tool allow-lists and per-agent trace spans.
 
-> The original single-business demo (Erth / MM Dental Care) still works at `/dashboard?biz=…`. See [Original demo](#original-demo-legacy) below.
+> Old public links (`/dashboard?biz=erth`, `/dashboard?biz=mm-dental`, `/whatsapp-demo`, `/pilot`, `/go-live`, `/run-of-show`, `/record-demo`, `/`) now open the new console, with **Erth Abu Dhabi** and **MM Dental Care** as tenants built from their public facts (`config/tenants/erth-abu-dhabi.json`, `mm-dental-care.json`). Mapping: `src/legacyRoutes.ts`, tested in `tests/legacy-routes.test.ts`. The original demo stays reachable, unlinked, under `/legacy/…`.
 
 ## Architecture
 
@@ -28,7 +28,7 @@ flowchart LR
   end
 ```
 
-- **Tenant isolation:** tools get the tenant from the call context, never from arguments, and any `tenant_id` argument is rejected. The booking store, response cache key (question + tenant + policy version) and rate-limit buckets are all keyed by tenant. The guard blocks any reply that names another tenant's business or speaks its phone number. Tests cover all 20 tenants.
+- **Tenant isolation:** tools get the tenant from the call context, never from arguments, and any `tenant_id` argument is rejected. The booking store, response cache key (question + tenant + policy version) and rate-limit buckets are all keyed by tenant. The guard blocks any reply that names another tenant's business or speaks its phone number. Tests cover all 22 tenants.
 - **Writes need confirmation:** `book_room` / `book_appointment` run only with the confirmation id issued when the caller says "yes" to the read-back.
 - **Fast path:** hours, prices, policies, bookings and hand-offs are answered by tools and templates. The LLM is called only for open FAQ questions (60 of 670 eval turns), and it is grounded on the tenant's own knowledge passages.
 - **Verticals:** `server/platform/agents/booking.ts` has a hotel flow (dates → guests → room type → name → phone → read-back) and a dental flow (treatment → location → day/time → name → phone → read-back). Each vertical has its own tools in `server/platform/tools.ts`.
@@ -98,7 +98,7 @@ Data-derived settings: `MAX_TOKENS_PER_CALL=2500` and `TOKEN_RESERVE_PER_ANSWER=
 - [x] `/healthz` (liveness) and `/readyz` (tenants loaded) endpoints, plus the Docker `HEALTHCHECK`.
 - [x] Structured JSON logs (`LOG_LEVEL`) with tenant, call id, intent, agent, tools and guard result, and no caller text. Trace sink failures never fail a turn.
 - [x] Per-tenant rate limits (token bucket; tenant file can override) → 429 + `Retry-After`.
-- [x] Tenant isolation: tools are tenant-scoped, `tenant_id` args are rejected, guard cross-tenant check, isolation tests across all 20 tenants.
+- [x] Tenant isolation: tools are tenant-scoped, `tenant_id` args are rejected, guard cross-tenant check, isolation tests across all 22 tenants.
 - [x] Prompt-injection screen before triage and tools; writes only after explicit confirmation.
 - [x] LLM fallback ladder (cache → `allam-2-7b` small tier with short context → filler + hand-off), token cap, silence re-prompt → hand-off.
 - [x] Redis response cache (TTL, key = question + tenant + policy version) with in-memory LRU fallback (`REDIS_URL`).
@@ -115,14 +115,20 @@ Data-derived settings: `MAX_TOKENS_PER_CALL=2500` and `TOKEN_RESERVE_PER_ANSWER=
 
 Config-driven demo (Vite + React). Default business is **Erth Abu Dhabi** (hotel). **MM Dental Care** (Leicester, UK) is the first dental business. Facts are labelled **DEMO / SAMPLE**.
 
-## Select a business
+## Old links -> new console
 
-```
-http://localhost:5173/dashboard              → Erth (default)
-http://localhost:5173/dashboard?biz=erth
-http://localhost:5173/dashboard?biz=mm-dental
-http://localhost:5173/record-demo?biz=mm-dental
-```
+| Old link | Opens |
+|---|---|
+| `/dashboard?biz=erth`, `/dashboard` | `/app/erth-abu-dhabi/test` |
+| `/dashboard?biz=mm-dental` | `/app/mm-dental-care/test` |
+| `/whatsapp-demo`, `/record-demo`, `/run-of-show` (`?biz=` respected) | that tenant's Test call |
+| `/go-live` | that tenant's Settings |
+| `/pilot` | that tenant's Live calls |
+| `/` | `/app` (Erth first); `/?biz=…` -> that tenant's Test call |
+
+Unknown `?biz=` -> `/app`. Other query params (e.g. `utm_*`) are kept.
+
+The original pages below are served under `/legacy/…` (e.g. `/legacy/dashboard?biz=erth`).
 
 Unknown `?biz=` shows a picker of registered businesses.
 
@@ -142,12 +148,12 @@ npm run dev
 
 | URL | Purpose |
 |---|---|
-| `/dashboard?biz=…` | Screen-share control surface |
-| `/whatsapp-demo?biz=…` | Fake WhatsApp UI (same state machine) |
-| `/pilot?biz=…` | Printable pilot one-pager |
-| `/record-demo?biz=mm-dental` | 60s screen-recordable dental voice demo |
-| `/run-of-show` | Meeting checklist (hotel) |
-| `/go-live` | Go-live checklist (hotel) |
+| `/legacy/dashboard?biz=…` | Screen-share control surface |
+| `/legacy/whatsapp-demo?biz=…` | Fake WhatsApp UI (same state machine) |
+| `/legacy/pilot?biz=…` | Printable pilot one-pager |
+| `/legacy/record-demo?biz=mm-dental` | 60s screen-recordable dental voice demo |
+| `/legacy/run-of-show` | Meeting checklist (hotel) |
+| `/legacy/go-live` | Go-live checklist (hotel) |
 
 ## Tests
 
@@ -308,7 +314,7 @@ For rule/tool turns the primary responder is the rule engine (sub-millisecond). 
 How to record test calls for real numbers:
 1. Set `VITE_TRACE=1` in `.env.local`.
 2. Run `npm run dev:all`.
-3. Open `/dashboard?biz=mm-dental` and do ~100 voice calls using the demo chips or your own lines.
+3. Open `/legacy/dashboard?biz=mm-dental` and do ~100 voice calls using the demo chips or your own lines.
 4. Run both reports.
 
 ### Accuracy evals = release gate

@@ -1,12 +1,12 @@
 /**
  * Builds evals/platform.jsonl from the tenant configs: the same scenarios for every one of
- * the 20 SAMPLE tenants (both verticals). Expected facts come from config, not from the
+ * the SAMPLE tenants (both verticals). Expected facts come from config, not from the
  * system under test. Deterministic. Run: npx tsx scripts/gen-platform-evals.mts
  */
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { loadTenants } from '../server/platform/registry.ts'
-import type { Tenant } from '../server/platform/tenant.ts'
+import { money, type Tenant } from '../server/platform/tenant.ts'
 import { humanize } from '../server/platform/speech.ts'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
@@ -26,10 +26,10 @@ for (const [i, t] of all.entries()) {
   add('hours', [{ say: t.vertical === 'hotel' ? 'Is reception open on Sunday?' : 'What time do you close on Friday?', expect: { agent: 'faq', intent: 'hours', tools: ['get_hours'], must: [esc(t.vertical === 'hotel' ? speak(loc.hours.sun) : speak(loc.hours.fri))] } }])
   // prices
   if (t.dental) {
-    const f = t.dental.treatments.find((x) => x.name === 'Filling')!
-    add('prices', [{ say: 'How much is a filling?', expect: { agent: 'faq', intent: 'prices', tools: ['get_prices'], must: [esc(`£${f.price}`)] } }])
+    const f = t.dental.treatments.find((x) => x.name === 'Filling') ?? t.dental.treatments.find((x) => x.price !== null)!
+    add('prices', [{ say: `How much is ${/^[aeiou]/i.test(f.name) ? 'an' : 'a'} ${f.name.toLowerCase()}?`, expect: /emergency/i.test(f.name) ? { agent: 'faq', must: [esc(money(t, f.price!))] } : { agent: 'faq', intent: 'prices', tools: ['get_prices'], must: [esc(money(t, f.price!))] } }])
   } else {
-    add('prices', [{ say: 'How much are your rooms?', expect: { agent: 'faq', intent: 'prices', tools: ['get_prices'], must: [esc(`${t.currency === 'USD' ? '$' : '£'}${t.hotel!.rooms[0].ratePerNight}`)] } }])
+    add('prices', [{ say: 'How much are your rooms?', expect: { agent: 'faq', intent: 'prices', tools: ['get_prices'], must: [esc(t.hotel!.rooms[0].ratePerNight === null ? t.hotel!.rooms[0].type : money(t, t.hotel!.rooms[0].ratePerNight))] } }])
     add('policy', [{ say: 'What time is check-in?', expect: { agent: 'faq', intent: 'policy', tools: ['get_policy'], must: [esc(t.hotel!.checkInTime)] } }])
     add('cancellation', [{ say: 'What is your cancellation policy?', expect: { agent: 'faq', intent: 'policy', tools: ['get_policy'], must: [esc(humanize(t.hotel!.cancellationPolicy).split(';')[0])] } }])
   }

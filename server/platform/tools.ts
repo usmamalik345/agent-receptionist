@@ -50,7 +50,7 @@ export const TOOLS: Record<string, ToolDef> = {
     validate: () => null,
     run: (ctx) =>
       ctx.tenant.hotel
-        ? ctx.tenant.hotel.rooms.map((r) => ({ item: r.type, price: `${money(ctx.tenant, r.ratePerNight)} per night`, maxGuests: r.maxGuests }))
+        ? ctx.tenant.hotel.rooms.map((r) => ({ item: r.type, price: r.ratePerNight === null ? null : `${money(ctx.tenant, r.ratePerNight)} per night`, maxGuests: r.maxGuests }))
         : (ctx.tenant.dental?.treatments ?? []).map((t) => ({ item: t.name, price: t.price === null ? null : `from ${money(ctx.tenant, t.price)}` })),
   },
   get_policy: {

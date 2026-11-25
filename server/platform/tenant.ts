@@ -29,7 +29,8 @@ export interface HotelConfig {
   checkInTime: string
   checkOutTime: string
   cancellationPolicy: string
-  rooms: Array<{ type: string; ratePerNight: number; maxGuests: number; count: number }>
+  /** ratePerNight null = not published; the rate is confirmed by reservations (never invented) */
+  rooms: Array<{ type: string; ratePerNight: number | null; maxGuests: number; count: number }>
 }
 export interface DentalConfig {
   slotMinutes: number
@@ -41,6 +42,8 @@ export interface Tenant {
   vertical: Vertical
   name: string
   sample: boolean
+  /** Where the facts come from (demo tenants built from a business's public site) */
+  source?: string
   timezone: string
   currency: 'GBP' | 'USD' | 'AED' | 'EUR' | 'PKR'
   policyVersion: string
@@ -85,7 +88,7 @@ export function validateTenant(t: unknown): string[] {
   if (x.vertical === 'hotel') {
     const h = x.hotel as Record<string, unknown> | undefined
     if (!h || !isStr(h.checkInTime) || !isStr(h.checkOutTime) || !isStr(h.cancellationPolicy) || !Array.isArray(h.rooms) || !h.rooms.length) e.push('hotel: checkInTime, checkOutTime, cancellationPolicy, rooms[]')
-    else (h.rooms as Array<Record<string, unknown>>).forEach((r, i) => { if (!isStr(r.type) || !isNum(r.ratePerNight) || !isNum(r.maxGuests) || !isNum(r.count)) e.push(`hotel.rooms[${i}]: type, ratePerNight, maxGuests, count`) })
+    else (h.rooms as Array<Record<string, unknown>>).forEach((r, i) => { if (!isStr(r.type) || !(r.ratePerNight === null || isNum(r.ratePerNight)) || !isNum(r.maxGuests) || !isNum(r.count)) e.push(`hotel.rooms[${i}]: type, ratePerNight, maxGuests, count`) })
     if (x.dental) e.push('hotel tenant must not have a dental block')
   }
   if (x.vertical === 'dental') {

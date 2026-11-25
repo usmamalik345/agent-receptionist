@@ -9,6 +9,10 @@ import { WhatsAppDemoPage } from './pages/WhatsAppDemoPage'
 import { BusinessProvider } from './store/BusinessContext'
 import { DemoProvider } from './store/DemoContext'
 import { lazy, Suspense } from 'react'
+import { LEGACY_PATHS, legacyTarget } from './legacyRoutes'
+
+// Tenant ids only (JSON named export; the rest of each file is tree-shaken out of the main bundle)
+const KNOWN_TENANTS = new Set(Object.values(import.meta.glob('../config/tenants/*.json', { eager: true, import: 'id' })))
 
 const ConsoleApp = lazy(() => import('./console/ConsoleApp'))
 
@@ -20,10 +24,10 @@ function ConsoleRoute() {
   )
 }
 
-function RootRedirect() {
-  const { search } = useLocation()
-  // Old links with ?biz= keep opening the original demo; everything else opens the console
-  return <Navigate to={search.includes('biz=') ? `/dashboard${search}` : '/app'} replace />
+/** Every old public link (LinkedIn, website) lands on the new console; see src/legacyRoutes.ts */
+function LegacyRedirect() {
+  const { pathname, search } = useLocation()
+  return <Navigate to={legacyTarget(pathname, search, (id) => KNOWN_TENANTS.has(id)) ?? '/app'} replace />
 }
 
 export default function App() {
@@ -35,15 +39,17 @@ export default function App() {
           <Route path="/app/:tenantId" element={<ConsoleRoute />} />
           <Route path="/app/:tenantId/:section" element={<ConsoleRoute />} />
           <Route path="/app/:tenantId/:section/:callId" element={<ConsoleRoute />} />
-          <Route element={<Layout />}>
-            <Route path="/" element={<RootRedirect />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/whatsapp-demo" element={<WhatsAppDemoPage />} />
-            <Route path="/go-live" element={<GoLivePage />} />
-            <Route path="/pilot" element={<PilotPage />} />
-            <Route path="/run-of-show" element={<RunOfShowPage />} />
-            <Route path="/record-demo" element={<RecordDemoPage />} />
+          {LEGACY_PATHS.map((p) => <Route key={p} path={p} element={<LegacyRedirect />} />)}
+          {/* Old demo kept reachable but unlinked */}
+          <Route path="/legacy" element={<Layout />}>
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="whatsapp-demo" element={<WhatsAppDemoPage />} />
+            <Route path="go-live" element={<GoLivePage />} />
+            <Route path="pilot" element={<PilotPage />} />
+            <Route path="run-of-show" element={<RunOfShowPage />} />
+            <Route path="record-demo" element={<RecordDemoPage />} />
           </Route>
+          <Route path="*" element={<Navigate to="/app" replace />} />
         </Routes>
       </DemoProvider>
     </BusinessProvider>

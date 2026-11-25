@@ -27,9 +27,11 @@ export interface Booking {
   totalPrice?: number
 }
 
+export type RoomOption = { type: string; ratePerNight: number | null; nights: number; total: number | null; left: number }
+
 export interface BookingStore {
   appointmentSlots(t: Tenant, q: { date: string; location: string; durationMin: number }): string[]
-  roomOptions(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }): Array<{ type: string; ratePerNight: number; nights: number; total: number; left: number }>
+  roomOptions(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }): RoomOption[]
   createAppointment(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking
   createRoomBooking(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking
   list(tenantId: string): Booking[]
@@ -89,10 +91,10 @@ export class MemoryBookingStore implements BookingStore {
           const used = rows.filter((b) => b.roomType === r.type && b.checkIn! <= night && night < b.checkOut!).length
           minLeft = Math.min(minLeft, r.count - used)
         }
-        return { type: r.type, ratePerNight: r.ratePerNight, nights, total: r.ratePerNight * nights, left: minLeft }
+        return { type: r.type, ratePerNight: r.ratePerNight, nights, total: r.ratePerNight === null ? null : r.ratePerNight * nights, left: minLeft }
       })
       .filter((o) => o.left > 0)
-      .sort((a, b) => a.ratePerNight - b.ratePerNight)
+      .sort((a, b) => (a.ratePerNight ?? Infinity) - (b.ratePerNight ?? Infinity))
   }
 
   private ref(t: Tenant): string {
@@ -110,7 +112,7 @@ export class MemoryBookingStore implements BookingStore {
   createRoomBooking(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking {
     const opt = this.roomOptions(t, { checkIn: b.checkIn!, checkOut: b.checkOut!, guests: b.guests! }).find((o) => o.type === b.roomType)
     if (!opt) throw new Error('room_unavailable')
-    const row: Booking = { ...b, totalPrice: opt.total, ref: this.ref(t), tenantId: t.id, kind: 'room', createdAt: new Date().toISOString() }
+    const row: Booking = { ...b, totalPrice: opt.total ?? undefined, ref: this.ref(t), tenantId: t.id, kind: 'room', createdAt: new Date().toISOString() }
     this.rows(t.id).push(row)
     return row
   }

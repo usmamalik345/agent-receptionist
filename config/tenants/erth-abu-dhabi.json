@@ -1,0 +1,71 @@
+{
+  "id": "erth-abu-dhabi",
+  "vertical": "hotel",
+  "name": "Erth Abu Dhabi (SAMPLE)",
+  "sample": true,
+  "source": "Demo tenant. Public facts from erth.ae (accommodations, dining, services, fitness) and the property fact sheet, as already used in src/config/resort.ts. Not an official Erth product. Room rates are not published there, so ratePerNight is null and reservations confirm the rate; maxGuests is the published occupancy; count is demo inventory for the booking simulator, not real availability.",
+  "timezone": "Asia/Dubai",
+  "currency": "AED",
+  "policyVersion": "v1",
+  "rateLimitPerMinute": 120,
+  "voice": {
+    "agentName": "Noor",
+    "locale": "en-US",
+    "preferredVoices": [
+      "Microsoft Aria Online (Natural) - English (United States)",
+      "Microsoft Jenny Online (Natural) - English (United States)",
+      "Google US English",
+      "en-US-AriaNeural"
+    ],
+    "rate": 0.98,
+    "pitch": 1,
+    "style": "warm"
+  },
+  "locations": [
+    {
+      "name": "Erth Abu Dhabi",
+      "address": "Khor Al Maqta, Al Khaleej Al Arabi Road, Abu Dhabi",
+      "phone": "+971 2 497 5308",
+      "hours": {
+        "mon": "8am–10pm",
+        "tue": "8am–10pm",
+        "wed": "8am–10pm",
+        "thu": "8am–10pm",
+        "fri": "8am–10pm",
+        "sat": "8am–10pm",
+        "sun": "8am–10pm"
+      }
+    }
+  ],
+  "faqs": [
+    { "q": "Is there parking?", "a": "Free private on-site parking, no reservation needed. EV charging and accessible parking are available.", "keywords": "parking park car valet ev charging" },
+    { "q": "Do you have wifi?", "a": "Yes, complimentary high-speed Wi-Fi in rooms and public areas.", "keywords": "wifi wi-fi internet" },
+    { "q": "Do you allow pets?", "a": "Pets are not permitted. For service animals, please confirm with reservations in advance.", "keywords": "pet pets dog dogs cat animal" },
+    { "q": "Where are you located?", "a": "Khor Al Maqta, Al Khaleej Al Arabi Road, Abu Dhabi. About 15 minutes from downtown and about 15 minutes' drive from Zayed International Airport, near Sheikh Zayed Grand Mosque.", "keywords": "where location address directions airport downtown mosque" },
+    { "q": "What restaurants do you have?", "a": "Al Rimal for the Emirati-inspired buffet, Ergon Deli and Cafe, Asrah by the pool, and Beetza for Neapolitan pizza. Halal meals are provided across dining outlets.", "keywords": "restaurant restaurants dining food eat dinner lunch breakfast buffet halal pizza" },
+    { "q": "Is there room service?", "a": "Yes, 24-hour room service is available for in-house guests.", "keywords": "room service in-room order food night" },
+    { "q": "Do you have a spa?", "a": "Yes, the Valmont Spa, the first Valmont Spa in Abu Dhabi, open daily 11am to 8pm.", "keywords": "spa massage treatment valmont wellness" },
+    { "q": "Is there a beach or pool?", "a": "There is a 350 metre private beach at Al Waryah and two outdoor pools, plus an indoor Olympic pool at Etizan.", "keywords": "beach pool pools swim swimming sea" },
+    { "q": "Is there a gym?", "a": "Yes, Etizan Fitness has a large gym, a ladies gym, padel, tennis, squash, an indoor Olympic pool and more.", "keywords": "gym fitness padel tennis squash workout sport" },
+    { "q": "Do you have a kids club?", "a": "Yes, there is a Kids Club with activities and play; please confirm ages and hours with the desk.", "keywords": "kids children child family club play" },
+    { "q": "Can you arrange an airport transfer?", "a": "Airport pick-up and drop-off can be arranged, usually with a surcharge. Share your flight number and arrival time and the desk will arrange it.", "keywords": "airport transfer pickup pick-up shuttle taxi flight" },
+    { "q": "Is a deposit needed at check-in?", "a": "A refundable damage deposit may apply at check-in; please confirm the amount with reservations. Photo ID and a credit card are typically required.", "keywords": "deposit id card payment check-in" },
+    { "q": "Do you host weddings and events?", "a": "Yes, there are 17 event venues including a ballroom, cinema and theatre, with a dedicated events team.", "keywords": "wedding weddings event events conference meeting ballroom venue" }
+  ],
+  "hotel": {
+    "checkInTime": "3pm",
+    "checkOutTime": "12pm",
+    "cancellationPolicy": "Cancellation terms depend on the rate booked, so reservations will confirm them when they confirm your booking.",
+    "rooms": [
+      { "type": "Al Ubayya Deluxe Room", "ratePerNight": null, "maxGuests": 3, "count": 2 },
+      { "type": "Al Hadiqa Deluxe Room", "ratePerNight": null, "maxGuests": 3, "count": 2 },
+      { "type": "Minhaf Executive Suite", "ratePerNight": null, "maxGuests": 4, "count": 1 },
+      { "type": "Al Muradi Family Suite", "ratePerNight": null, "maxGuests": 4, "count": 1 },
+      { "type": "Erth Suite", "ratePerNight": null, "maxGuests": 4, "count": 1 },
+      { "type": "Al Hidra Suite", "ratePerNight": null, "maxGuests": 6, "count": 1 },
+      { "type": "Rabdan Suite", "ratePerNight": null, "maxGuests": 6, "count": 1 },
+      { "type": "One-Bedroom Beach Villa", "ratePerNight": null, "maxGuests": 4, "count": 1 },
+      { "type": "One-Bedroom Pool Villa", "ratePerNight": null, "maxGuests": 4, "count": 1 }
+    ]
+  }
+}

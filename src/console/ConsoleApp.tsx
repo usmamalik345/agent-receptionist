@@ -2,7 +2,7 @@ import { Activity, CalendarCheck, Inbox, Menu, Mic, Moon, Search, Settings, Sun 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKE } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import './console.css'
-import { brand, tenantList, tenants } from './engine'
+import { brand, FEATURED, tenantList, tenants } from './engine'
 import { TestCallView } from './TestCallView'
 import { ConsoleState, initialTheme, statusOf, useConsole, type Theme } from './state'
 import { initials } from './ui'
@@ -31,7 +31,7 @@ function Palette({ onClose, onPick, section }: { onClose: () => void; onPick: (i
   return (
     <div className="ov" onMouseDown={onClose}>
       <div className="pal" role="dialog" aria-label="Switch business" onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKey}>
-        <input autoFocus placeholder={`Switch business (20) · opens ${section}`} value={q} onChange={(e) => { setQ(e.target.value); setI(0) }} aria-controls="sb-pal-list" />
+        <input autoFocus placeholder={`Switch business (${tenantList.length}) · opens ${section}`} value={q} onChange={(e) => { setQ(e.target.value); setI(0) }} aria-controls="sb-pal-list" />
         <ul id="sb-pal-list" role="listbox">
           {!list.length && <li className="g">No business matches “{q}”.</li>}
           {list.map((t, j) => (
@@ -123,10 +123,10 @@ function Shell() {
         {short(hotels).map((x) => <Link key={x.id} className="sb-tn" to={`/app/${x.id}/${section}`} aria-current={x.id === tenantId}>{brand(x)}</Link>)}
         <div className="sb-grp"><span>Dental · {dental.length}</span></div>
         {short(dental).map((x) => <Link key={x.id} className="sb-tn" to={`/app/${x.id}/${section}`} aria-current={x.id === tenantId}>{brand(x)}</Link>)}
-        <button className="sb-tn" style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--t3)' }} onClick={() => setPal(true)}>All 20 businesses…</button>
+        <button className="sb-tn" style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--t3)' }} onClick={() => setPal(true)}>All {tenantList.length} businesses…</button>
         <div className="sb-foot">
-          <div className="row"><span className="sb-sample">SAMPLE DATA</span><span>20 fictional businesses</span></div>
-          <div className="row"><button className="btn" style={{ height: 24 }} onClick={() => setHelp(true)}>Shortcuts <kbd>?</kbd></button><Link to="/dashboard" style={{ color: 'var(--t3)' }}>Original demo</Link></div>
+          <div className="row"><span className="sb-sample">SAMPLE DATA</span><span>{tenantList.length - FEATURED.length} fictional · {FEATURED.length} from public facts</span></div>
+          <div className="row"><button className="btn" style={{ height: 24 }} onClick={() => setHelp(true)}>Shortcuts <kbd>?</kbd></button></div>
         </div>
       </aside>
       <main className="sb-main">
