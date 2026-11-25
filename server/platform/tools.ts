@@ -70,7 +70,7 @@ export const TOOLS: Record<string, ToolDef> = {
   book_appointment: {
     name: 'book_appointment', verticals: ['dental'], sideEffect: true,
     validate: (a) => all(date(a, 'date'), str(a, 'time'), str(a, 'treatment'), str(a, 'location'), str(a, 'name'), str(a, 'phone'), str(a, 'confirmation_id')),
-    run: (ctx, a) => ctx.store.createAppointment(ctx.tenant, { date: String(a.date), time: String(a.time), treatment: String(a.treatment), location: String(a.location), name: String(a.name), phone: String(a.phone) }),
+    run: (ctx, a) => ctx.store.createAppointment(ctx.tenant, { date: String(a.date), time: String(a.time), treatment: String(a.treatment), location: String(a.location), name: String(a.name), phone: String(a.phone), callId: ctx.callId }),
   },
   check_room_availability: {
     name: 'check_room_availability', verticals: ['hotel'], sideEffect: false,
@@ -80,7 +80,7 @@ export const TOOLS: Record<string, ToolDef> = {
   book_room: {
     name: 'book_room', verticals: ['hotel'], sideEffect: true,
     validate: (a) => all(date(a, 'check_in'), date(a, 'check_out'), str(a, 'room_type'), str(a, 'name'), str(a, 'phone'), str(a, 'confirmation_id'), typeof a.guests === 'number' ? null : 'guests: number'),
-    run: (ctx, a) => ctx.store.createRoomBooking(ctx.tenant, { checkIn: String(a.check_in), checkOut: String(a.check_out), roomType: String(a.room_type), guests: Number(a.guests), name: String(a.name), phone: String(a.phone) }),
+    run: (ctx, a) => ctx.store.createRoomBooking(ctx.tenant, { checkIn: String(a.check_in), checkOut: String(a.check_out), roomType: String(a.room_type), guests: Number(a.guests), name: String(a.name), phone: String(a.phone), callId: ctx.callId }),
   },
   handoff_to_human: {
     name: 'handoff_to_human', verticals: ['hotel', 'dental'], sideEffect: false,

@@ -25,16 +25,24 @@ export interface Booking {
   checkOut?: string
   guests?: number
   totalPrice?: number
+  /** call that made the booking (server-side only) */
+  callId?: string
 }
 
 export type RoomOption = { type: string; ratePerNight: number | null; nights: number; total: number | null; left: number }
 
+type NewBooking = Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>
+
+/**
+ * Tenant-scoped booking repository. Async so the same interface fits the in-memory store
+ * (tests, browser demo) and the SQL store (Postgres in production, SQLite locally): see server/db/.
+ */
 export interface BookingStore {
-  appointmentSlots(t: Tenant, q: { date: string; location: string; durationMin: number }): string[]
-  roomOptions(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }): RoomOption[]
-  createAppointment(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking
-  createRoomBooking(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking
-  list(tenantId: string): Booking[]
+  appointmentSlots(t: Tenant, q: { date: string; location: string; durationMin: number }): Promise<string[]>
+  roomOptions(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }): Promise<RoomOption[]>
+  createAppointment(t: Tenant, b: NewBooking): Promise<Booking>
+  createRoomBooking(t: Tenant, b: NewBooking): Promise<Booking>
+  list(tenantId: string): Promise<Booking[]>
 }
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
@@ -54,6 +62,47 @@ export function openRange(hours: string): [number, number] | null {
   return a !== null && b !== null && b > a ? [a, b] : null
 }
 
+/** Bookable start times ("HH:MM") for one clinic location/day, minus the times already taken. */
+export function freeSlots(t: Tenant, q: { date: string; location: string; durationMin: number }, taken: Set<string>): string[] {
+  const loc = t.locations.find((l) => l.name === q.location)
+  if (!loc || !t.dental) return []
+  const hours = loc.hours[DAY_KEYS[weekdayOf(q.date)]]
+  // "phone lines only" etc. are not bookable
+  if (!hours || /only/i.test(hours)) return []
+  const range = openRange(hours)
+  if (!range) return []
+  const out: string[] = []
+  for (let m = range[0]; m + q.durationMin <= range[1]; m += t.dental.slotMinutes) if (!taken.has(hhmm(m))) out.push(hhmm(m))
+  return out
+}
+
+/** Nights of a stay, "YYYY-MM-DD" each; [] when the range is invalid or longer than 30 nights. */
+export function stayNights(checkIn: string, checkOut: string): string[] {
+  const n = nightsBetween(checkIn, checkOut)
+  if (n < 1 || n > 30) return []
+  return Array.from({ length: n }, (_, i) => addDays(checkIn, i))
+}
+
+/** Room types with rooms left on every night of the stay, cheapest first. `used(type, night)` = rooms already sold. */
+export function roomAvailability(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }, used: (type: string, night: string) => number): RoomOption[] {
+  if (!t.hotel) return []
+  const nights = stayNights(q.checkIn, q.checkOut)
+  if (!nights.length) return []
+  return t.hotel.rooms
+    .filter((r) => r.maxGuests >= q.guests)
+    .map((r) => {
+      let left = r.count
+      for (const night of nights) left = Math.min(left, r.count - used(r.type, night))
+      return { type: r.type, ratePerNight: r.ratePerNight, nights: nights.length, total: r.ratePerNight === null ? null : r.ratePerNight * nights.length, left }
+    })
+    .filter((o) => o.left > 0)
+    .sort((a, b) => (a.ratePerNight ?? Infinity) - (b.ratePerNight ?? Infinity))
+}
+
+export const bookingRef = (t: Tenant): string => `${t.vertical === 'hotel' ? 'H' : 'D'}${1000 + (globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 9000)}`
+export const appointmentDuration = (t: Tenant, treatment: string | undefined): number => t.dental?.treatments.find((x) => x.name === treatment)?.durationMin ?? 30
+
+/** In-process store: tests, evals and the browser demo. Check-then-write runs in one tick, so it is atomic. */
 export class MemoryBookingStore implements BookingStore {
   private readonly byTenant = new Map<string, Booking[]>()
 
@@ -63,61 +112,40 @@ export class MemoryBookingStore implements BookingStore {
     return r
   }
 
-  appointmentSlots(t: Tenant, q: { date: string; location: string; durationMin: number }): string[] {
-    const loc = t.locations.find((l) => l.name === q.location)
-    if (!loc || !t.dental) return []
-    const hours = loc.hours[DAY_KEYS[weekdayOf(q.date)]]
-    // "phone lines only" etc. are not bookable
-    if (/only/i.test(hours)) return []
-    const range = openRange(hours)
-    if (!range) return []
-    const taken = new Set(this.rows(t.id).filter((b) => b.kind === 'appointment' && b.date === q.date && b.location === q.location).map((b) => b.time))
-    const out: string[] = []
-    for (let m = range[0]; m + q.durationMin <= range[1]; m += t.dental.slotMinutes) if (!taken.has(hhmm(m))) out.push(hhmm(m))
-    return out
+  private slots(t: Tenant, q: { date: string; location: string; durationMin: number }): string[] {
+    const taken = new Set(this.rows(t.id).filter((b) => b.kind === 'appointment' && b.date === q.date && b.location === q.location).map((b) => b.time!))
+    return freeSlots(t, q, taken)
   }
 
-  roomOptions(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }) {
-    if (!t.hotel) return []
-    const nights = nightsBetween(q.checkIn, q.checkOut)
-    if (nights < 1 || nights > 30) return []
+  private rooms(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }): RoomOption[] {
     const rows = this.rows(t.id).filter((b) => b.kind === 'room')
-    return t.hotel.rooms
-      .filter((r) => r.maxGuests >= q.guests)
-      .map((r) => {
-        let minLeft = r.count
-        for (let i = 0; i < nights; i++) {
-          const night = addDays(q.checkIn, i)
-          const used = rows.filter((b) => b.roomType === r.type && b.checkIn! <= night && night < b.checkOut!).length
-          minLeft = Math.min(minLeft, r.count - used)
-        }
-        return { type: r.type, ratePerNight: r.ratePerNight, nights, total: r.ratePerNight === null ? null : r.ratePerNight * nights, left: minLeft }
-      })
-      .filter((o) => o.left > 0)
-      .sort((a, b) => (a.ratePerNight ?? Infinity) - (b.ratePerNight ?? Infinity))
+    return roomAvailability(t, q, (type, night) => rows.filter((b) => b.roomType === type && b.checkIn! <= night && night < b.checkOut!).length)
   }
 
-  private ref(t: Tenant): string {
-    return `${t.vertical === 'hotel' ? 'H' : 'D'}${1000 + (globalThis.crypto.getRandomValues(new Uint32Array(1))[0] % 9000)}`
+  async appointmentSlots(t: Tenant, q: { date: string; location: string; durationMin: number }): Promise<string[]> {
+    return this.slots(t, q)
   }
 
-  createAppointment(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking {
-    const dur = t.dental?.treatments.find((x) => x.name === b.treatment)?.durationMin ?? 30
-    if (!this.appointmentSlots(t, { date: b.date!, location: b.location!, durationMin: dur }).includes(b.time!)) throw new Error('slot_unavailable')
-    const row: Booking = { ...b, ref: this.ref(t), tenantId: t.id, kind: 'appointment', createdAt: new Date().toISOString() }
+  async roomOptions(t: Tenant, q: { checkIn: string; checkOut: string; guests: number }): Promise<RoomOption[]> {
+    return this.rooms(t, q)
+  }
+
+  async createAppointment(t: Tenant, b: NewBooking): Promise<Booking> {
+    if (!this.slots(t, { date: b.date!, location: b.location!, durationMin: appointmentDuration(t, b.treatment) }).includes(b.time!)) throw new Error('slot_unavailable')
+    const row: Booking = { ...b, ref: bookingRef(t), tenantId: t.id, kind: 'appointment', createdAt: new Date().toISOString() }
     this.rows(t.id).push(row)
-    return row
+    return { ...row }
   }
 
-  createRoomBooking(t: Tenant, b: Omit<Booking, 'ref' | 'tenantId' | 'kind' | 'createdAt'>): Booking {
-    const opt = this.roomOptions(t, { checkIn: b.checkIn!, checkOut: b.checkOut!, guests: b.guests! }).find((o) => o.type === b.roomType)
+  async createRoomBooking(t: Tenant, b: NewBooking): Promise<Booking> {
+    const opt = this.rooms(t, { checkIn: b.checkIn!, checkOut: b.checkOut!, guests: b.guests! }).find((o) => o.type === b.roomType)
     if (!opt) throw new Error('room_unavailable')
-    const row: Booking = { ...b, totalPrice: opt.total ?? undefined, ref: this.ref(t), tenantId: t.id, kind: 'room', createdAt: new Date().toISOString() }
+    const row: Booking = { ...b, totalPrice: opt.total ?? undefined, ref: bookingRef(t), tenantId: t.id, kind: 'room', createdAt: new Date().toISOString() }
     this.rows(t.id).push(row)
-    return row
+    return { ...row }
   }
 
-  list(tenantId: string): Booking[] {
+  async list(tenantId: string): Promise<Booking[]> {
     return this.rows(tenantId).map((b) => ({ ...b }))
   }
 }

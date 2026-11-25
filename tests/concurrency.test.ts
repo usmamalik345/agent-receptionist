@@ -35,7 +35,7 @@ test('two callers race for the same dental slot: one books, the other is re-offe
   assert.match(lost.text, /\?$/)
   assert.match((await p.turn(id, b, 'the first one')).text, /Shall I book it\?/)
   assert.ok((await p.turn(id, b, 'yes')).booking)
-  const got = p.bookings(id)
+  const got = await p.bookings(id)
   assert.equal(got.length, 2)
   assert.notEqual(`${got[0].date} ${got[0].time}`, `${got[1].date} ${got[1].time}`)
   assert.deepEqual(got.map((x) => x.name).sort(), ['Priya Shah', 'Tom Reid'])

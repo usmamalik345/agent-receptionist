@@ -1,9 +1,10 @@
 import { Activity, CalendarCheck, Inbox, Menu, Mic, Moon, Search, Settings, Sun } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKE } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import './console.css'
 import { brand, FEATURED, tenantList, tenants } from './engine'
 import { TestCallView } from './TestCallView'
+import { AuthProvider, LoginPage, LoginView, SessionFoot, useAuth } from './auth'
 import { ConsoleState, initialTheme, statusOf, useConsole, type Theme } from './state'
 import { initials } from './ui'
 import { BookingsView, InboxView, LiveView, SettingsView, useSampleRun } from './views'
@@ -18,10 +19,10 @@ const SECTIONS = [
 type Section = (typeof SECTIONS)[number]['id']
 const isTyping = (e: KeyboardEvent) => { const el = e.target as HTMLElement; return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) }
 
-function Palette({ onClose, onPick, section }: { onClose: () => void; onPick: (id: string) => void; section: Section }) {
+function Palette({ onClose, onPick, section, all }: { onClose: () => void; onPick: (id: string) => void; section: Section; all: typeof tenantList }) {
   const [q, setQ] = useState('')
   const [i, setI] = useState(0)
-  const list = useMemo(() => tenantList.filter((t) => `${brand(t)} ${t.vertical} ${t.locations[0]?.address ?? ''}`.toLowerCase().includes(q.toLowerCase())), [q])
+  const list = useMemo(() => all.filter((t) => `${brand(t)} ${t.vertical} ${t.locations[0]?.address ?? ''}`.toLowerCase().includes(q.toLowerCase())), [q, all])
   const onKey = (e: RKE) => {
     if (e.key === 'Escape') onClose()
     if (e.key === 'ArrowDown') { e.preventDefault(); setI((x) => Math.min(list.length - 1, x + 1)) }
@@ -31,7 +32,7 @@ function Palette({ onClose, onPick, section }: { onClose: () => void; onPick: (i
   return (
     <div className="ov" onMouseDown={onClose}>
       <div className="pal" role="dialog" aria-label="Switch business" onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKey}>
-        <input autoFocus placeholder={`Switch business (${tenantList.length}) · opens ${section}`} value={q} onChange={(e) => { setQ(e.target.value); setI(0) }} aria-controls="sb-pal-list" />
+        <input autoFocus placeholder={`Switch business (${all.length}) · opens ${section}`} value={q} onChange={(e) => { setQ(e.target.value); setI(0) }} aria-controls="sb-pal-list" />
         <ul id="sb-pal-list" role="listbox">
           {!list.length && <li className="g">No business matches “{q}”.</li>}
           {list.map((t, j) => (
@@ -63,8 +64,11 @@ function Shell() {
   const [pal, setPal] = useState(false)
   const [help, setHelp] = useState(false)
   const [menu, setMenu] = useState(false)
-  const valid = tenants.has(tenantId)
-  const { run } = useSampleRun(valid ? tenantId : tenantList[0].id)
+  const { allowedTenant } = useAuth()
+  // staff: only their own business (the API enforces this too; this keeps the UI honest)
+  const visible = useMemo(() => (allowedTenant ? tenantList.filter((x) => x.id === allowedTenant) : tenantList), [allowedTenant])
+  const valid = tenants.has(tenantId) && (!allowedTenant || tenantId === allowedTenant)
+  const { run } = useSampleRun(valid ? tenantId : (visible[0] ?? tenantList[0]).id)
   const mine = calls.filter((c) => c.tenantId === tenantId)
   const refs = useRef({ mine, section, callId, run })
   useEffect(() => { refs.current = { mine, section, callId, run } })
@@ -97,11 +101,12 @@ function Shell() {
     return () => window.removeEventListener('keydown', h)
   }, [go])
 
-  if (!valid) return <Navigate to={`/app/${tenantList[0].id}/live`} replace />
+  if (!visible.length) return <div className="sb" data-theme={theme}><div className="empty"><h2>No business on this account</h2><p>Your sign-in is linked to a business this console doesn't know. Ask an admin to check your account.</p></div></div>
+  if (!valid) return <Navigate to={`/app/${visible[0].id}/${section}`} replace />
   const t = tenants.get(tenantId)!
   const liveCount = mine.filter((c) => statusOf(c) === 'live').length
   const counts: Partial<Record<Section, number>> = { inbox: mine.filter((c) => c.turns.length).length }
-  const hotels = tenantList.filter((x) => x.vertical === 'hotel'), dental = tenantList.filter((x) => x.vertical === 'dental')
+  const hotels = visible.filter((x) => x.vertical === 'hotel'), dental = visible.filter((x) => x.vertical === 'dental')
   const short = (list: typeof tenantList) => { const i = list.findIndex((x) => x.id === tenantId); const base = list.slice(0, 3); return i >= 3 ? [...base.slice(0, 2), list[i]] : base }
   const title = SECTIONS.find((s) => s.id === section)!.label
 
@@ -119,13 +124,14 @@ function Shell() {
             </Link>
           ))}
         </nav>
-        <div className="sb-grp"><span>Hotels · {hotels.length}</span></div>
+        {hotels.length > 0 && <div className="sb-grp"><span>Hotels · {hotels.length}</span></div>}
         {short(hotels).map((x) => <Link key={x.id} className="sb-tn" to={`/app/${x.id}/${section}`} aria-current={x.id === tenantId}>{brand(x)}</Link>)}
-        <div className="sb-grp"><span>Dental · {dental.length}</span></div>
+        {dental.length > 0 && <div className="sb-grp"><span>Dental · {dental.length}</span></div>}
         {short(dental).map((x) => <Link key={x.id} className="sb-tn" to={`/app/${x.id}/${section}`} aria-current={x.id === tenantId}>{brand(x)}</Link>)}
-        <button className="sb-tn" style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--t3)' }} onClick={() => setPal(true)}>All {tenantList.length} businesses…</button>
+        {visible.length > 1 && <button className="sb-tn" style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--t3)' }} onClick={() => setPal(true)}>All {visible.length} businesses…</button>}
         <div className="sb-foot">
           <div className="row"><span className="sb-sample">SAMPLE DATA</span><span>{tenantList.length - FEATURED.length} fictional · {FEATURED.length} from public facts</span></div>
+          <SessionFoot />
           <div className="row"><button className="btn" style={{ height: 24 }} onClick={() => setHelp(true)}>Shortcuts <kbd>?</kbd></button></div>
         </div>
       </aside>
@@ -146,12 +152,25 @@ function Shell() {
         </div>
       </main>
       {menu && <div className="ov" style={{ zIndex: 14, background: 'rgba(10,10,12,.2)' }} onClick={() => setMenu(false)} />}
-      {pal && <Palette section={section} onClose={() => setPal(false)} onPick={(id) => { setPal(false); nav(`/app/${id}/${section}`) }} />}
+      {pal && <Palette all={visible} section={section} onClose={() => setPal(false)} onPick={(id) => { setPal(false); nav(`/app/${id}/${section}`) }} />}
       {help && <Help onClose={() => setHelp(false)} />}
     </div>
   )
 }
 
-export default function ConsoleApp() {
+function Gate() {
+  const { mode } = useAuth()
+  const { pathname, search } = useLocation()
+  if (mode.status === 'loading') return <div style={{ padding: 24, font: '14px system-ui', color: '#8d8c87' }}>Loading…</div>
+  if (mode.status === 'anon') return <LoginView next={`${pathname}${search}`} />
   return <ConsoleState><Shell /></ConsoleState>
+}
+
+export default function ConsoleApp() {
+  return <AuthProvider><Gate /></AuthProvider>
+}
+
+/** /login (lazy-loaded with the console) */
+export function LoginRoute() {
+  return <AuthProvider><LoginPage /></AuthProvider>
 }

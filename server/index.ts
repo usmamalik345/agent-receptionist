@@ -13,6 +13,8 @@ import cors from 'cors'
 import express from 'express'
 import twilio from 'twilio'
 import { mountAgentRoutes } from './agentRoutes.ts'
+import { createAuthFromEnv, createPersistence, seedUsersFromEnv } from './platform/bootstrap.ts'
+import { loadPlatformEnv } from './platform/config.ts'
 import { mountPlatformRoutes } from './platform/http.ts'
 import { createLogger } from './platform/logger.ts'
 import { Platform } from './platform/orchestrator.ts'
@@ -501,10 +503,17 @@ app.get('/api/tts', async (req, res) => {
 mountAgentRoutes(app)
 
 /** Multi-tenant platform API (20 SAMPLE tenants by default; see server/platform/) */
+// Same storage/auth wiring as server/platform/main.ts: DATABASE_URL -> SQL store, AUTH_SECRET -> login required
 {
   const logger = createLogger()
   const { errors } = loadTenants()
-  mountPlatformRoutes(app, new Platform({ tenants: platformTenants, logger, traceSink: defaultTraceSink(), cache: createResponseCache() }), { logger, tenantErrors: errors })
+  const { config, problems } = loadPlatformEnv({ ...process.env, NODE_ENV: 'development' })
+  for (const p of problems) logger.error('config_problem', { problem: p })
+  const persistence = await createPersistence(config, logger)
+  await seedUsersFromEnv(persistence.users, platformTenants)
+  const auth = createAuthFromEnv(config, persistence.users, logger)
+  const platform = new Platform({ tenants: platformTenants, logger, traceSink: defaultTraceSink(), cache: createResponseCache(), store: persistence.store, callLog: persistence.callLog })
+  mountPlatformRoutes(app, platform, { logger, tenantErrors: errors, auth, dbReady: persistence.dbReady, storage: persistence.storage })
 }
 
 app.listen(PORT, () => {

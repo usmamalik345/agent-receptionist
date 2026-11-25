@@ -13,6 +13,13 @@ export interface PlatformEnv {
   hasLlmKey: boolean
   redis: boolean
   maxBodyBytes: number
+  /** postgres://… or sqlite:path; unset = in-memory store (demo / tests) */
+  databaseUrl: string | undefined
+  migrateOnBoot: boolean
+  /** HS256 key for session tokens; unset = auth off (local demo only, refused in production) */
+  authSecret: string | undefined
+  authTtlSec: number
+  cookieSecure: boolean
 }
 
 export function loadPlatformEnv(env: Record<string, string | undefined> = process.env): { config: PlatformEnv; problems: string[] } {
@@ -31,6 +38,14 @@ export function loadPlatformEnv(env: Record<string, string | undefined> = proces
   const nodeEnv = env.NODE_ENV || 'development'
   const cors = env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean) : '*'
   if (nodeEnv === 'production' && cors === '*') problems.push('CORS_ORIGINS must be set in production (comma-separated origins)')
+  const databaseUrl = env.DATABASE_URL || undefined
+  if (databaseUrl && !/^(postgres(ql)?:\/\/|sqlite:)/i.test(databaseUrl)) problems.push('DATABASE_URL must start with postgres:// or sqlite:')
+  const authSecret = env.AUTH_SECRET || undefined
+  if (authSecret && authSecret.length < 32) problems.push('AUTH_SECRET must be at least 32 characters (e.g. openssl rand -base64 48)')
+  if (nodeEnv === 'production') {
+    if (!authSecret) problems.push('AUTH_SECRET must be set in production (the API and console require login)')
+    if (!databaseUrl && env.ALLOW_MEMORY_STORE !== 'true') problems.push('DATABASE_URL must be set in production (or ALLOW_MEMORY_STORE=true for a throwaway demo)')
+  }
   return {
     problems,
     config: {
@@ -44,6 +59,11 @@ export function loadPlatformEnv(env: Record<string, string | undefined> = proces
       hasLlmKey: Boolean(env.LLM_API_KEY),
       redis: Boolean(env.REDIS_URL),
       maxBodyBytes: int('MAX_BODY_BYTES', 16_384, 1024, 1_000_000),
+      databaseUrl,
+      migrateOnBoot: env.DB_MIGRATE_ON_BOOT !== 'false',
+      authSecret,
+      authTtlSec: int('AUTH_TTL_MIN', 480, 5, 7 * 24 * 60) * 60,
+      cookieSecure: env.COOKIE_SECURE ? env.COOKIE_SECURE === 'true' : nodeEnv === 'production',
     },
   }
 }

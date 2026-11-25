@@ -15,10 +15,12 @@ import { LEGACY_PATHS, legacyTarget } from './legacyRoutes'
 const KNOWN_TENANTS = new Set(Object.values(import.meta.glob('../config/tenants/*.json', { eager: true, import: 'id' })))
 
 const ConsoleApp = lazy(() => import('./console/ConsoleApp'))
+const LoginRoute = lazy(() => import('./console/ConsoleApp').then((m) => ({ default: m.LoginRoute })))
+const loading = <div style={{ padding: 24, font: '14px system-ui', color: '#8d8c87' }}>Loading…</div>
 
 function ConsoleRoute() {
   return (
-    <Suspense fallback={<div style={{ padding: 24, font: '14px system-ui', color: '#8d8c87' }}>Loading…</div>}>
+    <Suspense fallback={loading}>
       <ConsoleApp />
     </Suspense>
   )
@@ -35,6 +37,7 @@ export default function App() {
     <BusinessProvider>
       <DemoProvider>
         <Routes>
+          <Route path="/login" element={<Suspense fallback={loading}><LoginRoute /></Suspense>} />
           <Route path="/app" element={<ConsoleRoute />} />
           <Route path="/app/:tenantId" element={<ConsoleRoute />} />
           <Route path="/app/:tenantId/:section" element={<ConsoleRoute />} />

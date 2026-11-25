@@ -1,11 +1,13 @@
 /**
  * Production entry for the multi-tenant receptionist API (used by the Dockerfile).
  * Only the platform API: no WhatsApp bridge, no demo routes.
- *   PORT, TENANTS_DIR, LOG_LEVEL, RATE_LIMIT_PER_MINUTE, CORS_ORIGINS, LLM_*, REDIS_URL, TRACE_FILE
+ *   PORT, TENANTS_DIR, LOG_LEVEL, RATE_LIMIT_PER_MINUTE, CORS_ORIGINS, LLM_*, REDIS_URL, TRACE_FILE,
+ *   DATABASE_URL, DB_MIGRATE_ON_BOOT, AUTH_SECRET, AUTH_TTL_MIN, COOKIE_SECURE, SEED_* (see README)
  */
 import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
+import { createAuthFromEnv, createPersistence, seedUsersFromEnv } from './bootstrap.ts'
 import { loadPlatformEnv } from './config.ts'
 import { mountPlatformRoutes } from './http.ts'
 import { createLogger } from './logger.ts'
@@ -31,20 +33,29 @@ const traceSink = (r: object) => {
     logger.warn('trace_write_failed', { error: e instanceof Error ? e.message : String(e) })
   }
 }
-const platform = new Platform({ tenants, logger, traceSink, cache: createResponseCache(), defaultRateLimitPerMinute: config.defaultRateLimitPerMinute })
+const persistence = await createPersistence(config, logger)
+const seeded = await seedUsersFromEnv(persistence.users, tenants)
+if (seeded.length) logger.info('users_seeded', { users: seeded })
+const auth = createAuthFromEnv(config, persistence.users, logger)
+if (!auth) logger.warn('auth_disabled', { note: 'AUTH_SECRET unset: API is open (local/demo only)' })
+const platform = new Platform({ tenants, logger, traceSink, cache: createResponseCache(), defaultRateLimitPerMinute: config.defaultRateLimitPerMinute, store: persistence.store, callLog: persistence.callLog })
 
 const app = express()
 app.disable('x-powered-by')
-app.use(cors({ origin: config.corsOrigins === '*' ? true : config.corsOrigins }))
+// TRUST_PROXY_HOPS=1 behind one proxy / load balancer, so req.ip is the client (login rate limit); 0 = direct
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 0))
+app.use(cors({ origin: config.corsOrigins === '*' ? true : config.corsOrigins, credentials: config.corsOrigins !== '*' }))
 app.use(express.json({ limit: config.maxBodyBytes }))
-mountPlatformRoutes(app, platform, { logger, tenantErrors: errors, configProblems: problems })
+mountPlatformRoutes(app, platform, { logger, tenantErrors: errors, configProblems: problems, auth, dbReady: persistence.dbReady, storage: persistence.storage })
 
 const server = app.listen(config.port, () => {
-  logger.info('listening', { port: config.port, tenants: tenants.size, llm: platform.llm.provider, cache: platform.cache.stats().backend, node_env: config.nodeEnv })
+  logger.info('listening', { port: config.port, tenants: tenants.size, llm: platform.llm.provider, cache: platform.cache.stats().backend, storage: persistence.storage, auth: Boolean(auth), node_env: config.nodeEnv })
 })
 const shutdown = (sig: string) => {
   logger.info('shutdown', { signal: sig })
-  server.close(() => process.exit(0))
+  server.close(() => {
+    void platform.flush().then(() => persistence.close()).finally(() => process.exit(0))
+  })
   setTimeout(() => process.exit(0), 5000).unref()
 }
 process.on('SIGTERM', () => shutdown('SIGTERM'))

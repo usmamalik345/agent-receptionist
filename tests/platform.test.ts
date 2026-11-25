@@ -79,8 +79,8 @@ test('isolation: a call id is bound to its tenant; bookings and cache keys are t
   assert.throws(() => p.end('brightsmile-dental', a.callId), PlatformError)
   const { out } = await talk(p, 'harbour-view-hotel', [...HOTEL_BOOK, 'yes'])
   assert.ok(out.at(-1)!.booking)
-  assert.equal(p.bookings('harbour-view-hotel').length, 1)
-  for (const t of tenants.values()) if (t.id !== 'harbour-view-hotel') assert.equal(p.bookings(t.id).length, 0, t.id)
+  assert.equal((await p.bookings('harbour-view-hotel')).length, 1)
+  for (const t of tenants.values()) if (t.id !== 'harbour-view-hotel') assert.equal((await p.bookings(t.id)).length, 0, t.id)
   assert.notEqual(p.cache.key('is there parking', 'harbour-view-hotel', 'v1'), p.cache.key('is there parking', 'clifton-grand', 'v1'))
 })
 
@@ -100,10 +100,10 @@ test('booking flow works for every tenant in both verticals; write happens only 
     const last = out.at(-1)!
     assert.equal(last.pendingConfirmation, true, `${t.id}: ${last.text}`)
     assert.match(last.text, /Shall I book it\?/)
-    assert.equal(p.bookings(t.id).length, 0, `${t.id}: wrote before confirmation`)
+    assert.equal((await p.bookings(t.id)).length, 0, `${t.id}: wrote before confirmation`)
     const yes = await p.turn(t.id, callId, 'yes please')
     assert.ok(yes.booking, `${t.id}: ${yes.text}`)
-    assert.equal(p.bookings(t.id).length, 1)
+    assert.equal((await p.bookings(t.id)).length, 1)
     assert.ok(yes.tools.some((x) => x.tool === (t.vertical === 'dental' ? 'book_appointment' : 'book_room') && x.ok))
   }
 })
@@ -141,7 +141,7 @@ test('tool failure never claims success: apology + hand-off, nothing written', a
   assert.equal(r.booking, null)
   assert.equal(r.escalated, true)
   assert.doesNotMatch(r.text, /booked/i)
-  assert.equal(p.bookings('clifton-grand').length, 0)
+  assert.equal((await p.bookings('clifton-grand')).length, 0)
 })
 
 test('per-agent spans in the trace: agent, decision, tools', async () => {

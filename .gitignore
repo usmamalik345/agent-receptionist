@@ -35,3 +35,6 @@ metrics/*.jsonl
 
 # Generated reports (re-create with npm run report:* / eval)
 metrics/
+
+# local SQLite database
+data/

@@ -20,6 +20,7 @@ import { silentLogger, type Logger } from './logger.ts'
 import { validateHandoff, type AgentName, type AgentReply, type HandoffMessage, type ToolCallRecord } from './protocol.ts'
 import { TenantRateLimiter } from './rateLimit.ts'
 import { MemoryBookingStore, type BookingStore } from './store.ts'
+import { MemoryCallLog, type CallLog } from './callLog.ts'
 import { humanize, sentences } from './speech.ts'
 import type { Tenant } from './tenant.ts'
 import { callTool, type ToolContext } from './tools.ts'
@@ -48,6 +49,8 @@ interface Session {
 export interface PlatformOptions {
   tenants: Map<string, Tenant>
   store?: BookingStore
+  /** per-call / per-turn log (no caller words); default in-memory */
+  callLog?: CallLog
   llm?: LlmClient
   cache?: ResponseCache
   config?: LatencyConfig
@@ -83,6 +86,9 @@ export const HUMAN_HANDOFF_TEXT = "Of course. I'll pass you to a member of the t
 export class Platform {
   readonly tenants: Map<string, Tenant>
   readonly store: BookingStore
+  readonly callLog: CallLog
+  private readonly pending = new Set<Promise<void>>()
+  private readonly chains = new Map<string, Promise<void>>()
   readonly llm: LlmClient
   readonly cache: ResponseCache
   readonly config: LatencyConfig
@@ -98,6 +104,7 @@ export class Platform {
     this.opts = opts
     this.tenants = opts.tenants
     this.store = opts.store ?? new MemoryBookingStore()
+    this.callLog = opts.callLog ?? new MemoryCallLog()
     this.config = opts.config ?? loadLatencyConfig()
     this.llm = opts.llm ?? loadLlmClient()
     // Server entries pass createResponseCache() (Redis when REDIS_URL is set); default is the in-memory LRU
@@ -119,6 +126,24 @@ export class Platform {
     if (!s || s.tenantId !== tenantId) throw new PlatformError(404, 'unknown call')
     return s
   }
+  /** Call-log writes never block or fail a caller's turn: they run in the background and errors are logged. */
+  /** Writes for one call run in order (start -> turns -> end), different calls in parallel. */
+  private record(what: string, callId: string, fn: () => Promise<void>): void {
+    const prev = this.chains.get(callId) ?? Promise.resolve()
+    const p: Promise<void> = prev
+      .then(fn)
+      .catch((e) => this.log.warn('call_log_write_failed', { what, call_id: callId, error: e instanceof Error ? e.message : String(e) }))
+      .finally(() => {
+        this.pending.delete(p)
+        if (this.chains.get(callId) === p) this.chains.delete(callId)
+      })
+    this.chains.set(callId, p)
+    this.pending.add(p)
+  }
+  /** Wait for background call-log writes (tests, graceful shutdown). */
+  async flush(): Promise<void> {
+    while (this.pending.size) await Promise.all([...this.pending])
+  }
   private limit(t: Tenant): void {
     const wait = this.limiter.take(t.id, t.rateLimitPerMinute ?? this.opts.defaultRateLimitPerMinute ?? 120)
     if (wait > 0) {
@@ -137,6 +162,8 @@ export class Platform {
     })
     const greeting = `Hi, you're through to ${t.name.replace(/\s*\(SAMPLE\)\s*/i, '')}, this is ${t.voice.agentName}. How can I help?`
     this.log.info('call_start', { tenant: t.id, call_id: callId, vertical: t.vertical })
+    const at = (this.opts.now?.() ?? new Date()).toISOString()
+    this.record('call_start', callId, () => this.callLog.callStarted(t.id, callId, at))
     return { callId, tenantId, greeting, chunks: sentences(greeting), voice: t.voice, sample: t.sample }
   }
 
@@ -145,6 +172,8 @@ export class Platform {
     this.sessions.delete(callId)
     this.silenceMonitor.reset(callId)
     this.log.info('call_end', { tenant: tenantId, call_id: callId })
+    const at = (this.opts.now?.() ?? new Date()).toISOString()
+    this.record('call_end', callId, () => this.callLog.callEnded(tenantId, callId, at))
   }
 
   silence(tenantId: string, callId: string, silentMs: number): SilenceAction {
@@ -155,9 +184,20 @@ export class Platform {
     return a
   }
 
-  bookings(tenantId: string) {
+  async bookings(tenantId: string) {
     this.tenant(tenantId)
     return this.store.list(tenantId)
+  }
+
+  /** Recent calls for one tenant (newest first) from the call log. */
+  async calls(tenantId: string, limit = 100) {
+    this.tenant(tenantId)
+    return this.callLog.listCalls(tenantId, limit)
+  }
+
+  async callTurns(tenantId: string, callId: string) {
+    this.tenant(tenantId)
+    return this.callLog.listTurns(tenantId, callId)
   }
 
   /** Read-only snapshot of a call's booking slots (for the console inspector). Tenant-scoped like every other call API. */
@@ -176,6 +216,7 @@ export class Platform {
     const s = this.session(tenantId, callId)
     this.limit(t)
     const text = String(rawText ?? '').slice(0, 500).trim()
+    const turnStart = performance.now()
     s.turn++
     s.callerTexts.push(text)
     this.silenceMonitor.reset(callId)
@@ -260,6 +301,12 @@ export class Platform {
     const trace = tb.end()
     this.log.info('turn', { tenant: t.id, call_id: callId, turn: s.turn, intent: tr.intent, agent: reply.agent, tools: tools.map((x) => `${x.tool}:${x.ok ? 'ok' : x.error}`), guard_blocked: g.blocked, escalated: s.escalated, chars_in: text.length, chars_out: out.length })
     const booked = reply.decision.endsWith(':ok') && s.booking.done ? { ref: s.booking.done.ref, kind: s.booking.done.kind } : null
+    const rec = {
+      tenantId: t.id, callId, turn: s.turn, traceId: trace.trace_id, agent: reply.agent, intent: tr.intent, tools: tools.map((x) => `${x.tool}:${x.ok ? 'ok' : x.error}`),
+      escalated: s.escalated, guardBlocked: g.blocked, bookingRef: booked?.ref ?? null, latencyMs: Math.round(performance.now() - turnStart), replyChars: out.length,
+      at: (this.opts.now?.() ?? new Date()).toISOString(),
+    }
+    this.record('turn', callId, () => this.callLog.turnRecorded(rec))
     return {
       callId, tenantId: t.id, text: out, chunks, agent: reply.agent, intent: tr.intent, handoffs, tools, escalated: s.escalated,
       guard: { ok: g.ok, blocked: g.blocked, violations: g.violations.map((v) => v.kind), crossTenant: g.crossTenant },

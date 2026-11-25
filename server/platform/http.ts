@@ -9,8 +9,15 @@
  *   POST /api/v1/tenants/:tenantId/calls/:callId/turns     { text }
  *   POST /api/v1/tenants/:tenantId/calls/:callId/silence   { ms }
  *   DELETE /api/v1/tenants/:tenantId/calls/:callId
+ *   GET  /api/v1/tenants/:tenantId/bookings                confirmed bookings (from the store / database)
+ *   GET  /api/v1/tenants/:tenantId/call-log                recent calls; /call-log/:callId = its turns
+ *   /api/v1/auth/*                                         login / logout / me (server/auth/http.ts)
+ * With `auth` set (production), everything under /api/v1/tenants needs a session and staff only
+ * reach their own tenant. Without it (local dev, tests, static demo) the API is open and
+ * /api/v1/auth/me answers { authEnabled: false }.
  */
 import type { Express, NextFunction, Request, Response } from 'express'
+import type { Auth, AuthedUser } from '../auth/http.ts'
 import type { Logger } from './logger.ts'
 import { Platform, PlatformError } from './orchestrator.ts'
 
@@ -19,6 +26,11 @@ export interface MountOptions {
   tenantErrors: Array<{ file: string; problems: string[] }>
   configProblems?: string[]
   startedAt?: number
+  /** session auth + tenant access control; omit for an open local/demo API */
+  auth?: Auth
+  /** readiness probe for the database (omit when there is none) */
+  dbReady?: () => Promise<boolean>
+  storage?: 'memory' | 'postgres' | 'sqlite'
 }
 
 const ID = /^[a-z0-9][a-z0-9-]{1,48}$/
@@ -42,9 +54,17 @@ export function mountPlatformRoutes(app: Express, platform: Platform, o: MountOp
     next()
   }
 
+  const open = (_req: Request, _res: Response, next: NextFunction) => next()
+  const user = o.auth?.requireUser ?? open
+  const tenantAccess = o.auth?.requireTenant ?? open
+  const guarded = [ids, user, tenantAccess]
+  if (o.auth) o.auth.mount(app)
+  else app.get('/api/v1/auth/me', (_req, res) => void res.json({ ok: true, authEnabled: false, user: null }))
+
   app.get('/healthz', (_req, res) => void res.json({ ok: true, uptime_s: Math.round((Date.now() - startedAt) / 1000) }))
-  app.get('/readyz', (_req, res) => {
-    const ready = platform.tenants.size > 0 && !(o.configProblems?.length)
+  app.get('/readyz', async (_req, res) => {
+    const db = o.dbReady ? await o.dbReady().catch(() => false) : null
+    const ready = platform.tenants.size > 0 && !(o.configProblems?.length) && db !== false
     res.status(ready ? 200 : 503).json({
       ok: ready,
       tenants: platform.tenants.size,
@@ -53,24 +73,28 @@ export function mountPlatformRoutes(app: Express, platform: Platform, o: MountOp
       config_problems: o.configProblems ?? [],
       llm: { provider: platform.llm.provider, primary: platform.llm.primaryModel, small: platform.llm.smallModel },
       cache: platform.cache.stats().backend,
+      storage: o.storage ?? 'memory',
+      db,
+      auth: Boolean(o.auth),
     })
   })
-  app.get('/api/v1/tenants', (_req, res) => {
-    res.json({ ok: true, tenants: [...platform.tenants.values()].map((t) => ({ id: t.id, name: t.name, vertical: t.vertical, sample: t.sample })) })
+  app.get('/api/v1/tenants', user, (_req, res) => {
+    const u = res.locals.user as AuthedUser | undefined
+    res.json({ ok: true, tenants: [...platform.tenants.values()].filter((t) => !u || u.role === 'admin' || u.tenant === t.id).map((t) => ({ id: t.id, name: t.name, vertical: t.vertical, sample: t.sample })) })
   })
-  app.get('/api/v1/tenants/:tenantId', ids, (req, res) => {
+  app.get('/api/v1/tenants/:tenantId', ...guarded, (req, res) => {
     const t = platform.tenants.get(req.params.tenantId)
     if (!t) return void res.status(404).json({ ok: false, error: 'unknown tenant' })
     res.json({ ok: true, tenant: { id: t.id, name: t.name, vertical: t.vertical, sample: t.sample, voice: t.voice, locations: t.locations.map((l) => ({ name: l.name, phone: l.phone })) } })
   })
-  app.post('/api/v1/tenants/:tenantId/calls', ids, (req, res) => {
+  app.post('/api/v1/tenants/:tenantId/calls', ...guarded, (req, res) => {
     try {
       res.status(201).json({ ok: true, ...platform.start(req.params.tenantId) })
     } catch (e) {
       send(res, e)
     }
   })
-  app.post('/api/v1/tenants/:tenantId/calls/:callId/turns', ids, async (req, res) => {
+  app.post('/api/v1/tenants/:tenantId/calls/:callId/turns', ...guarded, async (req, res) => {
     const text = req.body?.text
     if (typeof text !== 'string' || !text.trim() || text.length > 500) return void res.status(400).json({ ok: false, error: 'text: 1-500 chars' })
     try {
@@ -84,7 +108,7 @@ export function mountPlatformRoutes(app: Express, platform: Platform, o: MountOp
       send(res, e)
     }
   })
-  app.post('/api/v1/tenants/:tenantId/calls/:callId/silence', ids, (req, res) => {
+  app.post('/api/v1/tenants/:tenantId/calls/:callId/silence', ...guarded, (req, res) => {
     const ms = Number(req.body?.ms)
     if (!Number.isFinite(ms) || ms < 0 || ms > 600_000) return void res.status(400).json({ ok: false, error: 'ms: 0-600000' })
     try {
@@ -93,10 +117,35 @@ export function mountPlatformRoutes(app: Express, platform: Platform, o: MountOp
       send(res, e)
     }
   })
-  app.delete('/api/v1/tenants/:tenantId/calls/:callId', ids, (req, res) => {
+  app.delete('/api/v1/tenants/:tenantId/calls/:callId', ...guarded, (req, res) => {
     try {
       platform.end(req.params.tenantId, req.params.callId)
       res.json({ ok: true })
+    } catch (e) {
+      send(res, e)
+    }
+  })
+  app.get('/api/v1/tenants/:tenantId/bookings', ...guarded, async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store')
+      res.json({ ok: true, bookings: (await platform.bookings(req.params.tenantId)).map(({ callId: _c, ...b }) => b) })
+    } catch (e) {
+      send(res, e)
+    }
+  })
+  app.get('/api/v1/tenants/:tenantId/call-log', ...guarded, async (req, res) => {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100))
+    try {
+      res.setHeader('Cache-Control', 'no-store')
+      res.json({ ok: true, calls: await platform.calls(req.params.tenantId, limit) })
+    } catch (e) {
+      send(res, e)
+    }
+  })
+  app.get('/api/v1/tenants/:tenantId/call-log/:callId', ...guarded, async (req, res) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store')
+      res.json({ ok: true, turns: await platform.callTurns(req.params.tenantId, req.params.callId) })
     } catch (e) {
       send(res, e)
     }

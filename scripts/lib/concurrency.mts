@@ -123,7 +123,7 @@ export async function runLevel(level: number, opts: { timeoutMs?: number; seed?:
   // store audit: each tenant holds exactly its own callers' bookings
   let bookings = 0, wrong = 0, double = 0
   for (const t of all) {
-    const got = platform.bookings(t.id)
+    const got = await platform.bookings(t.id)
     bookings += got.length
     const want = expected.get(t.id) ?? new Set<string>()
     for (const b of got) if (b.tenantId !== t.id || !want.has(`${b.name}|${b.phone.replace(/\D/g, '').replace(/^(\d{5})(\d+)$/, '$1 $2')}`) && !want.has(`${b.name}|${b.phone}`)) { wrong++; failures.push(`store ${t.id}: unexpected booking ${b.name} ${b.phone}`) }

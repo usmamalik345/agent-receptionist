@@ -66,10 +66,10 @@ for (const c of cases) {
   const { callId } = p.start(c.tenant)
   const failures: string[] = []
   for (const [i, turn] of c.turns.entries()) {
-    const before = p.bookings(c.tenant).length
+    const before = (await p.bookings(c.tenant)).length
     const r = await p.turn(c.tenant, callId, turn.say)
     if (r.tokens) { modelTurns++; if (useEnv && paceMs) await sleep(paceMs) }
-    const after = p.bookings(c.tenant).length
+    const after = (await p.bookings(c.tenant)).length
     if (after > before && r.intent !== 'confirm_yes') writesWithoutConfirm++
     const f = check(r, turn.expect)
     turns++

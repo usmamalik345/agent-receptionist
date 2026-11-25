@@ -22,6 +22,9 @@
     "resolveJsonModule": true
   },
   "include": [
+    "server/platform/**/*.ts",
+    "server/db/*.ts",
+    "server/auth/*.ts",
     "server/router.ts",
     "server/tracing.ts",
     "server/latency.ts",
@@ -42,6 +45,7 @@
     "scripts/replay-harness.mts",
     "scripts/gen-replay-fixtures.mts",
     "scripts/decision-diff.mts",
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    "scripts/db.mts"
   ]
 }

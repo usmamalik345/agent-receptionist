@@ -1,9 +1,11 @@
 import { CalendarCheck, Inbox, Play, Radio } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { speakText, waitForVoices } from '../lib/speech'
 import { pickBestVoice } from '../lib/voicePick'
 import { money } from '../../server/platform/tenant.ts'
+import type { Booking } from '../../server/platform/store.ts'
+import { useAuth } from './auth'
 import { brand, platform, tenantList, tenants } from './engine'
 import { scenariosFor } from './scenarios'
 import { statusOf, useConsole, type Call } from './state'
@@ -134,11 +136,33 @@ export function InboxView({ tenantId }: { tenantId: string }) {
   )
 }
 
+/** Signed in to the API: bookings from the server's database. Demo: bookings made in this browser's sandbox. */
+function useBookings(tenantId: string, version: number): { rows: Booking[]; source: 'api' | 'sandbox'; error: string | null } {
+  const { mode } = useAuth()
+  const api = mode.status === 'authed'
+  const [state, setState] = useState<{ key: string; rows: Booking[]; error: string | null }>({ key: '', rows: [], error: null })
+  const key = `${api}|${tenantId}|${version}`
+  useEffect(() => {
+    let live = true
+    const load = api
+      ? fetch(`/api/v1/tenants/${encodeURIComponent(tenantId)}/bookings`, { credentials: 'same-origin' }).then(async (r) => {
+          if (!r.ok) throw new Error(r.status === 403 ? 'Not allowed for this business.' : `Could not load bookings (${r.status}).`)
+          return ((await r.json()) as { bookings: Booking[] }).bookings
+        })
+      : platform.bookings(tenantId)
+    load.then((rows) => live && setState({ key, rows, error: null }), (e: unknown) => live && setState({ key, rows: [], error: e instanceof Error ? e.message : String(e) }))
+    return () => { live = false }
+  }, [api, tenantId, key])
+  return { rows: state.key === key ? state.rows : [], source: api ? 'api' : 'sandbox', error: state.key === key ? state.error : null }
+}
+
 export function BookingsView({ tenantId }: { tenantId: string }) {
   const { version } = useConsole()
-  const rows = useMemo(() => platform.bookings(tenantId), [tenantId, version]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { rows, source, error } = useBookings(tenantId, version)
   const t = tenants.get(tenantId)!
   const nav = useNavigate()
+  if (error) return <Empty icon={<CalendarCheck size={20} />} title="Bookings unavailable" body={error} />
+  if (!rows.length && source === 'api') return <Empty icon={<CalendarCheck size={20} />} title="No bookings yet" body="Bookings from real calls appear here once a caller confirms. Test calls in this console run in a browser sandbox and are not saved." />
   if (!rows.length) return <Empty icon={<CalendarCheck size={20} />} title="No bookings yet" body="A booking is written only after the caller hears the read-back and says yes."><button className="btn pri" onClick={() => nav(`/app/${tenantId}/test`)}>Run the booking scenario</button></Empty>
   return (
     <div className="sb-scroll">
