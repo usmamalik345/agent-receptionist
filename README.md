@@ -1,4 +1,5 @@
 # AI Receptionist Platform: multi-tenant, multi-agent (hotels + dental clinics)
+Built by [Osama Malik](https://osamamalik.me), AI Agent Engineer in Islamabad, Pakistan. Case study: [osamamalik.me/projects/agent-receptionist](https://osamamalik.me/projects/agent-receptionist/) · Hire for voice agents: [osamamalik.me/hire/voice-ai-developer](https://osamamalik.me/hire/voice-ai-developer/)
 
 A voice and chat receptionist for many businesses at once. It ships with **22 SAMPLE tenants (11 hotels, 11 dental clinics)**: 20 fictional ones (names, addresses and phone numbers in 555-01xx / Ofcom drama ranges) plus two demos built from public facts, **Erth Abu Dhabi** (erth.ae) and **MM Dental Care** (mmdentalcare.co.uk). Where a fact isn't published (Erth room rates, MM check-up price) the field is `null` and the agent says the team will confirm it; nothing is invented. You onboard a new business by adding one JSON file, with no code change. Every caller turn goes through a set of small agents with typed hand-offs, per-agent tool allow-lists and per-agent trace spans.
 
